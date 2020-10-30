@@ -12,8 +12,6 @@
 
 **Residents of the European Union please read Spotify's [GDPR article 15 information](https://support.spotify.com/us/article/gdpr-article-15-information/)**
 
-**This repo, DLL file(s), mod(s), and scripts/functions within the mod do not send *ANY* information about users outside of the users local files.**
-
 **No personal information is sent from the users computer**
 
 **To remove this applications access to your Spotify account visit your [Spotify account apps page](https://www.spotify.com/us/account/apps/) and click *REMOVE ACCESS* to remove this apps access**
