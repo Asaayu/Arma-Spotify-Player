@@ -1,5 +1,5 @@
 # Arma Spotify Jukebox
-### Arma Spotify Jukebox (ASJ), is an in-game jukebox for Arma 3 which allows users to interact and with their Spotify application.
+### Arma Spotify Jukebox (ASJ), is an in-game jukebox for Arma 3 which allows users to interact with their Spotify application.
 
 ## Legal Information
 **Arma Spotify Jukebox (ASJ)** is not affiliated, created by, nor endorsed by Spotify, Spotify AB, and Spotify Technology S.A.
