@@ -6,11 +6,15 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ArmaSpotifyJukebox_02
+namespace ArmaSpotifyController
 {
     public class DllEntry
     {
-        // Do not remove these two lines
+        // Predefined version information + author name
+        new static readonly string version_info = "ASJ DLL - VER 0.0.1 - Asaayu";
+
+
+        // Do not remove these six lines
 #if WIN64
         [DllExport("RVExtensionVersion", CallingConvention = CallingConvention.Winapi)]
 #else
@@ -21,10 +25,10 @@ namespace ArmaSpotifyJukebox_02
             // Reduce output by 1 to avoid accidental overflow
             outputSize--;
 
-            output.Append("ASJ DLL - Version 0.0.1");
+            output.Append(version_info);
         }
 
-        // Do not remove these two lines
+        // Do not remove these six lines
 #if WIN64
         [DllExport("RVExtension", CallingConvention = CallingConvention.Winapi)]
 #else
@@ -35,16 +39,18 @@ namespace ArmaSpotifyJukebox_02
             // Reduce output by 1 to avoid accidental overflow
             outputSize--;
 
-            if (function == "google")
+            switch (function.ToLower())
             {
-                System.Diagnostics.Process.Start("http://google.com");
-            };
-            
-            // Reverses the input string
-            char[] arr = function.ToCharArray();
-            Array.Reverse(arr);
-            string result = new string(arr);
-            output.Append(result);
+                // LEGAL: View legal information about mod
+                case "legal":
+                    output.Append("Go to https://github.com/Asaayu/Arma-Spotify-Jukebox to view the GitHub repo and view important legal information.");
+                    break;
+
+                    // DEFAULT: Show version information
+                default:
+                    output.Append(version_info);
+                    break;
+            }
         }
     }
 }
