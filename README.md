@@ -12,7 +12,7 @@
 
 **Residents of the European Union please read Spotify's [GDPR article 15 information](https://support.spotify.com/us/article/gdpr-article-15-information/)**
 
-**No personal information is sent from the users computer**
+**No personaly identifiable information is sent from the users computer**
 
 **To remove this applications access to your Spotify account visit your [Spotify account apps page](https://www.spotify.com/us/account/apps/) and click *REMOVE ACCESS*  beside the "Arma Spotify Jukebox" application**
 
