@@ -1,8 +1,8 @@
-# Arma Spotify Jukebox
-### Arma Spotify Jukebox (ASJ), is an in-game jukebox for Arma 3 which allows users to interact with their Spotify application.
+# Asaayu's Arma Spotify Player
+### Asaayu's Arma Spotify Player (AASP), is an in-game jukebox for Arma 3 which allows users to interact with their Spotify application.
 
 ## Legal Information
-**Arma Spotify Jukebox (ASJ)** is not affiliated, created by, nor endorsed by Spotify, Spotify AB, and Spotify Technology S.A.
+**Asaayu's Arma Spotify Player (AASP)** is not affiliated, created by, nor endorsed by Spotify, Spotify AB, and Spotify Technology S.A.
 
 *All Spotify trademarks, service marks, trade names, logos, domain names, and any other features of the Spotify brand (“Spotify Brand Features”) are the sole property of Spotify or its licensors.*
 
@@ -14,5 +14,5 @@
 
 **No personaly identifiable information is sent from the users computer**
 
-**To remove this applications access to your Spotify account visit your [Spotify account apps page](https://www.spotify.com/us/account/apps/) and click *REMOVE ACCESS*  beside the "Arma Spotify Jukebox" application**
+**To remove this applications access to your Spotify account visit your [Spotify account apps page](https://www.spotify.com/us/account/apps/) and click *REMOVE ACCESS*  beside the "Asaayu's Arma Spotify Player" application**
 
