@@ -1,5 +1,5 @@
 # Asaayu's Arma Spotify Player
-### Asaayu's Arma Spotify Player (AASP), is an in-game jukebox for Arma 3 which allows users to interact with their Spotify application.
+### Asaayu's Arma Spotify Player (AASP) is an in-game system to allow users to interact with their Soptify application through through Arma 3.
 
 ## Legal Information
 **Asaayu's Arma Spotify Player (AASP)** is not affiliated, created by, nor endorsed by Spotify, Spotify AB, and Spotify Technology S.A.
