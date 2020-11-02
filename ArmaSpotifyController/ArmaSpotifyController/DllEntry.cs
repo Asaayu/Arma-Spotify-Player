@@ -1,5 +1,4 @@
 ﻿using RGiesecke.DllExport;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Management;
 using System.Security.Cryptography;
@@ -7,11 +6,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
-using System.Security.Principal;
-using System.Net;
 using System.Net.Http;
 using System.IO;
+using System.Web;
+
 
 namespace ArmaSpotifyController
 {
@@ -28,8 +26,6 @@ namespace ArmaSpotifyController
         static string async_response;
         static string id;
 
-        static bool connected = false;
-
         private const int Keysize = 256;
         private const int DerivationIterations = 1000;
 
@@ -45,29 +41,18 @@ namespace ArmaSpotifyController
 
             if (response.IsSuccessStatusCode)
             {
-                // Save response to variable for later use
+                // Save response to dictonary for later use
                 async_response = await response.Content.ReadAsStringAsync();
-                connected = true;
             }
-            else
-            {
-                // Empty response due to non-success
-                async_response = "";
-            }            
         }
 
-        public static bool spotify_connected()
-        {
-            return !(client_refresh_token == "" || client_access_token == "");
-        }
-
-        public async static void RefreshToken(string refresh)
+        public static void RefreshToken(string refresh)
         {
             // POST URL
             String post_url = "https://accounts.spotify.com/api/token";
             // Setup POST data
             var values = new Dictionary<string, string>
-            {                
+            {
                 { "grant_type", "refresh_token" },
                 { "refresh_token", refresh },
                 { "client_id", app_client_id }
@@ -75,15 +60,14 @@ namespace ArmaSpotifyController
             var content = new FormUrlEncodedContent(values);
 
             // Send async post request to server
-            RequestData(post_url, content);
+            //RequestData(post_url, content);
 
             System.Threading.Thread.Sleep(2000);
 
-            if (async_response != "")
+            if (async_response != null)
             {
-                JObject response = JObject.Parse(async_response);
-                client_refresh_token = response.GetValue("refresh_token").ToString();
-                client_access_token = response.GetValue("access_token").ToString();
+                //client_refresh_token = async_response.GetValue("refresh_token").ToString();
+                //client_access_token = async_response.GetValue("access_token").ToString();
             }
         }
 
@@ -185,7 +169,7 @@ namespace ArmaSpotifyController
             // Guid.NewGuid and System.Random are not particularly random. By using a
             // cryptographically-secure random number generator, the caller is always
             // protected, regardless of use.
-            using (var rng = new System.Security.Cryptography.RNGCryptoServiceProvider())
+            using (var rng = new RNGCryptoServiceProvider())
             {
                 var result = new StringBuilder();
                 var buf = new byte[128];
@@ -244,8 +228,8 @@ namespace ArmaSpotifyController
             }
 
             // Create base64 string ID
-            id = System.Convert.ToBase64String(Encoding.UTF8.GetBytes(id));
-
+            id = Convert.ToBase64String(Encoding.UTF8.GetBytes(id));
+            
             // Auto output the version information to the report file
             output.Append(version_info);
         }
@@ -261,31 +245,31 @@ namespace ArmaSpotifyController
             // Reduce output by 1 to avoid accidental overflow
             outputSize--;
 
+            // Split on the spacers, in this case ":"
+            String[] parameters = function.Split(':');
+
             // Check if the function starts with the word "Spotify"
             if (function.Length >= 7 && function.ToLower().Substring(0,7) == "spotify")
             {
-                // Split on the spacers, in this case ":"
-                String[] parameters = function.Split(':');
-                
                 if (parameters.Length > 1)
                 {
                     switch (parameters[1].ToLower())
                     {
-
+                        // DEFAULT: Show version information
+                        default:
+                            output.Append(version_info);
+                            break;
                     }
                 }
                 else
                 {
-                    // Only the word spotify was passed through. Error?
-                    output.Append("Reading you loud and clear! o7");
-                };                    
+                    output.Append(version_info);
+                };
             }
             else
             {
-                String[] parameters = function.Split(':');
-
                 // Switch through all the other options
-                switch (function.ToLower())
+                switch (parameters[0].ToLower())
                 {
                     // REFRESH: Get refresh token and output encrypted string
                     case "refresh":
@@ -301,9 +285,6 @@ namespace ArmaSpotifyController
                                 output.Append("ERROR: No client refresh token was found. Refresh rejected");
                                 break;
                             }
-
-
-
                         }
                         break;
 
@@ -321,17 +302,23 @@ namespace ArmaSpotifyController
 
                     // AUTHORISE: Get async response and save
                     case "authorise":
-                        if (async_response != "")
+                        String data = async_response;
+                        if (data != null)
                         {
-                            JObject response = JObject.Parse(async_response);
-                            client_refresh_token = response.GetValue("refresh_token").ToString();
-                            client_access_token = response.GetValue("access_token").ToString();
+                            if (data != "")
+                            {
+                                output.Append(data);
+                            }
+                            else
+                            {
+                                output.Append("ERROR: Request returned zero data. Reauthorization required!");
+                            }                            
                         }
                         else
                         {
-                            output.Append("ERROR: Async response returned with non-success status code");
+                            output.Append("ERROR: Request timed out. Reauthorization required!");
                         }
-                        break;
+                        break;                        
 
                     // AUTHORISE_SUBMIT: Receive authorise information from the user to get token
                     case "authorise_submit":
@@ -356,15 +343,16 @@ namespace ArmaSpotifyController
                                 };
                                 var content = new FormUrlEncodedContent(values);
 
-                                // Send async post request to server
+                                String random_id = RandomString(25);
+                                // Send async post request to spotify
                                 RequestData(post_url, content);
 
-                                output.Append("async");
+                                output.Append("Async request sent.");
                             }
                             else
                             {
                                 // Missing state key
-                                output.Append("ERROR: Incorrect 'state' key. Authorization has been rejected.");
+                                output.Append("ERROR: Incorrect 'state' key. Reauthorization required!");
                             }
                         }
                         else
@@ -372,44 +360,52 @@ namespace ArmaSpotifyController
                             // Incorrect input
                             output.Append("ERROR: Missing key and state parameter for authorisiation.");
                         };
-
                         break;
 
                     // AUTHORISE_REQUEST: Open url to allow the user to authorise this application
                     case "authorise_request":
-
                         // Create code verifier
                         verifier_string = RandomString(110);
 
-                        byte[] sha_bytes;
                         // Create code challange
-                        using (SHA256 hash = SHA256Managed.Create())
-                        {
-                            sha_bytes = hash.ComputeHash(Encoding.UTF8.GetBytes(verifier_string));
-                        }
+                        byte[] sha_bytes = SHA256Managed.Create().ComputeHash(Encoding.UTF8.GetBytes(verifier_string));
 
                         // Encode to base64 url safe
-                        String challange_string = System.Convert.ToBase64String(sha_bytes)
-                            .Split('=')[0].Replace('+', '-').Replace('/', '_');
-
-                        // Base URL
-                        String base_url = "https://accounts.spotify.com/authorize";
-
-                        // Redirect URL - Must be added to whitelist in Spotify application API
-                        String redirect_uri = "http://asaayu.com/arma-3/spotify/auth.php";
+                        String challange_string = Convert.ToBase64String(sha_bytes).Split('=')[0].Replace('+', '-').Replace('/', '_');                        
 
                         // Scopes required by the application
-                        String scope = "user-read-currently-playing";
+                        String[] scopes =
+                        {
+                            "user-read-recently-played",
+                            "user-read-currently-playing",
+                            "playlist-read-collaborative",
+                            "playlist-read-private",
+                            "user-read-private",
+                            "user-read-playback-state",
+                            "user-read-playback-position",
+                            "user-top-read",
+                            "user-modify-playback-state"
+                        };
 
-                        String final_url = base_url + "?response_type=code&client_id=" + app_client_id + "&redirect_uri=" + redirect_uri + "&scope=" + scope + "&state=" + state + "&code_challenge=" + challange_string + "&code_challenge_method=S256";
+                        // URL parameters
+                        var parameters_dict = new Dictionary<string, string>
+                        {
+                            { "response_type", "code" },
+                            { "client_id", app_client_id },
+                            { "redirect_uri", HttpUtility.UrlEncode("http://asaayu.com/arma-3/spotify/auth.php") },
+                            { "scope", String.Join("%20", scopes)},
+                            { "state", state.ToString() },
+                            { "code_challenge", challange_string },
+                            { "code_challenge_method", "S256" }
+                        };
 
                         // DO NOT ALLOW USER TO CUSTOMIZE THIS.
-                        System.Diagnostics.Process.Start(final_url);
+                        System.Diagnostics.Process.Start(string.Format("https://accounts.spotify.com/authorize?{0}", string.Join("&", parameters_dict.Select(kvp => string.Format("{0}={1}", kvp.Key, kvp.Value)))));
                         break;
 
                     // LEGAL: View legal information about mod
                     case "legal":
-                        output.Append("Go to https://github.com/Asaayu/Arma-Spotify-Jukebox to view the GitHub repo and view important legal information.");
+                        output.Append("Go to https://github.com/Asaayu/Arma-Spotify-Player to view the GitHub repo and view important legal information.");
                         break;
 
                     // DEFAULT: Show version information
