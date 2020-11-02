@@ -3,7 +3,6 @@
 
 ## Authorization Scopes
 Scopes provide Spotify users using third-party apps the confidence that only the information they choose to share will be shared, and nothing more.
-
 You can find a list of all the avaliable scopes [on the Spotify developer website](https://developer.spotify.com/documentation/general/guides/scopes/).
 
 ### **This mod uses the following scopes:**
