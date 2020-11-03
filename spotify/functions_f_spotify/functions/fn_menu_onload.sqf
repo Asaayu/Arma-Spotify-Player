@@ -72,13 +72,17 @@ CONNECT_BUTTON ctrlAddEventHandler ["ButtonClick",
 
 		private _handle = [_error_ctrl] spawn
 		{
+
 			_this params ["_error_ctrl"];
 			_error_ctrl ctrlSetTextColor [0,1,0,1];
-			for "_i" from 0 to 5 do
+			while {true} do
 			{
-				private _add = ["",".","..","...","....","....."] select _i;
-				_error_ctrl ctrlSetText format["Loading%1",_add];
-				sleep 0.2;
+				for "_i" from 0 to 5 do
+				{
+					private _add = ["",".","..","...","....","....."] select _i;
+					_error_ctrl ctrlSetText format["Loading%1",_add];
+					sleep 0.2;
+				};
 			};
 		};
 
@@ -88,14 +92,18 @@ CONNECT_BUTTON ctrlAddEventHandler ["ButtonClick",
 			_ctrl ctrlCommit 0;
 		} foreach [15006,15008,15009];
 
-		uisleep 1;
-
-		private _return_02 = "ArmaSpotifyController" callExtension format["authorise:%1", _return_01];
+		// Allow 5 retries to wait for data to load
+		private _return_02 = "";
+		for "_i" from 0 to 5 do
+		{
+			uisleep 1;
+			_return_02 = "ArmaSpotifyController" callExtension format["authorise:%1", _return_01];
+			if (_return_02 select [0,6] != "ERROR:") exitWith {};
+		};
 
 		terminate _handle;
 		if (_return_02 select [0,6] == "ERROR:") exitWith
 		{
-			_error_ctrl ctrlSetTextColor [1,0,0,1];
 			_error_ctrl ctrlSetText _return_02;
 
 			{
@@ -107,8 +115,15 @@ CONNECT_BUTTON ctrlAddEventHandler ["ButtonClick",
 			ctrlSetFocus (_display displayCtrl 15008);
 		};
 
-		_error_ctrl ctrlSetTextColor [0,1,0,1];
-		_error_ctrl ctrlSetText _return_02;
-
+		if (_return_02 == "success") then
+		{
+			_error_ctrl ctrlSetTextColor [0,1,0,1];
+			_error_ctrl ctrlSetText "Authorisation Successful!";
+		}
+		else
+		{
+			_error_ctrl ctrlSetTextColor [1,0,0,1];
+			_error_ctrl ctrlSetText _return_02;
+		};
 	};
 }];
