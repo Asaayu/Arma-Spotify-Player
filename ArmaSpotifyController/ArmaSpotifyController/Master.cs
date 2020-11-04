@@ -11,7 +11,9 @@ using System.IO;
 using System.Web;
 using System.Timers;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 namespace ArmaSpotifyController
 {
@@ -115,13 +117,13 @@ namespace ArmaSpotifyController
         {
             // Tokens last 3600 seconds, aka. 1 hour.
             // Attempt to refresh every 50 minutes to allow 10 minutes for errors
-            refresh_timer = new Timer(30 * 1000);
+            refresh_timer = new Timer(3000 * 1000);
             refresh_timer.Elapsed += RefreshToken;
             refresh_timer.AutoReset = true;
             refresh_timer.Enabled = true;
         }
 
-        private async static Task RefeshData()
+        public async static Task RefeshData()
         {
             // Setup POST data
             var values = new Dictionary<string, string>
@@ -185,7 +187,7 @@ namespace ArmaSpotifyController
             }
         }
 
-        private static void RefreshToken(Object source, ElapsedEventArgs e)
+        public static void RefreshToken(Object source, ElapsedEventArgs e)
         {
             Task ignore = RefeshData();
         }
@@ -194,6 +196,20 @@ namespace ArmaSpotifyController
 
     public class Data
     {
+        public static bool InternetConnection()
+        {
+            try
+            {
+                using (var client = new WebClient())
+                using (client.OpenRead("http://google.com/generate_204"))
+                    return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public async static void RequestData_Authorise(string post_url, FormUrlEncodedContent content)
         {
             // Send request + content in POST 
@@ -218,6 +234,85 @@ namespace ArmaSpotifyController
             }
         }
 
+        public async static void Get_Client_Info()
+        {
+            // Set authorization headers
+            Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+            // Send request + content in GET 
+            var response = await Master.client.GetAsync("https://api.spotify.com/v1/me");
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Save response to variable for later use
+                Master.get_response = await response.Content.ReadAsStringAsync();
+            }
+            else
+            {
+                // Check if we are being rate limited
+                if (response.StatusCode == (HttpStatusCode)429)
+                {
+                    Master.get_response = "RATE_LIMIT";
+                }
+                else
+                {
+                    Master.get_response = "";
+                }
+            }
+            Set_Client_Info();
+        }
+
+        public static void Set_Client_Info()
+        {
+            if (Master.get_response != "")
+            {
+                if (Master.get_response != "RATE_LIMIT")
+                {
+                    // Save response to variable for later use
+                    var data = Master.get_response;
+
+                    String result_product = data.Substring(10, 5);
+                    //String result_country = match_country.Value.Substring(12);
+                    //String result_name = data.Substring(pFrom_name + 1, (pTo_name - 1) - pFrom_name);
+                    //String result_explicit = match_explicit.Value.Substring(17);
+
+                    //Master.client_premium = true;//result_product == "premium";
+                    //Master.client_country = data.Substring(18, 2);
+                    //Master.client_name = Master.get_response;
+                    //Master.client_show_explicit = result_explicit == "false";
+
+                    // This is only used to check if we have alreay got the users info
+                    Master.client_ready = "true";
+                }
+            }
+        }
+
+        public async static void GetRequest(string get_url, String header_title, String header_body)
+        {
+            // Set authorization headers
+            Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(header_title, header_body);
+
+            // Send request + content in GET 
+            var response = await Master.client.GetAsync(get_url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Save response to variable for later use
+                Master.get_response = await response.Content.ReadAsStringAsync();
+            }
+            else
+            {
+                // Check if we are being rate limited
+                if (response.StatusCode == (HttpStatusCode)429)
+                {
+                    Master.get_response = "RATE_LIMIT";
+                }
+                else
+                {
+                    Master.get_response = "";
+                }
+            }
+        }
     }
 
     public class Master
@@ -230,16 +325,24 @@ namespace ArmaSpotifyController
         internal static string client_refresh_token;
         internal static string client_access_token;
 
+        // Client variables
+        internal static string client_ready;
+        internal static bool client_premium;
+        internal static string client_country;
+        internal static string client_name;
+        internal static bool client_show_explicit;
+
         // HttpClient for posting data to Spotify
         internal static readonly HttpClient client = new HttpClient();
 
         // Variables containing important information
         internal static string verifier_string;
-        internal static string authorise_response;
         internal static string id;
         internal static int state;
 
-        
+        // Async responses
+        internal static string authorise_response;
+        internal static string get_response;
 
         // Do not remove these six lines
 #if WIN64
@@ -290,10 +393,16 @@ namespace ArmaSpotifyController
 #else
         [DllExport("_RVExtension@12", CallingConvention = CallingConvention.Winapi)]
 #endif
-        public static void RvExtension(StringBuilder output, int outputSize, [MarshalAs(UnmanagedType.LPStr)] string function)
+        public async static void RvExtension(StringBuilder output, int outputSize, [MarshalAs(UnmanagedType.LPStr)] string function)
         {
             // Reduce output by 1 to avoid accidental overflow
             outputSize--;
+
+            if(!Data.InternetConnection())
+            {
+                output.Append("ERROR: Internet connection is required for this mod");
+                return;
+            }
 
             // Split on the spacers, in this case ":"
             String[] parameters = function.Split(':');
@@ -304,7 +413,18 @@ namespace ArmaSpotifyController
                 if (parameters.Length > 1)
                 {
                     switch (parameters[1].ToLower())
-                    {
+                    {                        
+                        // GET_USER_INFO: Check user info
+                        case "get_user_info":
+                            output.Append(client_name);
+                            break;
+
+                        // SET_USER_INFO: Check user info
+                        case "set_user_info":
+                            Data.Get_Client_Info();
+                            output.Append("AAA");
+                            break;
+
                         // DEFAULT: Show version information
                         default:
                             output.Append(version_info);
@@ -482,7 +602,7 @@ namespace ArmaSpotifyController
                                     {
                                         String input = parameters[2];
                                         bool check_bool = Security.DecryptString(id, input) == client_access_token;
-                                        output.Append(check_bool.ToString());
+                                        output.Append(check_bool.ToString().ToLower());
                                     }
                                     else
                                     {
@@ -538,7 +658,7 @@ namespace ArmaSpotifyController
                                     {
                                         String input = parameters[2];
                                         bool check_bool = Security.DecryptString(id, input) == client_refresh_token;
-                                        output.Append(check_bool.ToString());
+                                        output.Append(check_bool.ToString().ToLower());
                                     }
                                     else
                                     {
@@ -560,7 +680,7 @@ namespace ArmaSpotifyController
                     // AUTHORISED: Check if the user is already authorised
                     case "authorised":
                         bool check = client_access_token != null && client_refresh_token != null;
-                        output.Append(check.ToString());
+                        output.Append(check.ToString().ToLower());
                         break;
 
                     // LEGAL: View legal information about mod
