@@ -1,77 +1,149 @@
 ﻿using RGiesecke.DllExport;
 using System;
-using System.Management;
-using System.Security.Cryptography;
 using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Net.Http;
 using System.IO;
-using System.Web;
-using System.Timers;
+using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
-using System.Text.RegularExpressions;
+using System.Timers;
+using System.Web;
 
 namespace ArmaSpotifyController
 {
+    public class Log
+    {
+        // Log directory and current log file path
+        internal static String log_directory;
+        internal static String log_file;
+
+        // Toekn directory and current token file path
+        internal static String token_directory;
+        internal static String token_file;
+        
+        internal static void Setup()
+        {
+            // Set file directory
+            log_directory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\logs";
+            log_file = log_directory + @"\SpotifyController_" + DateTime.Now.ToString("dd-MM-yyyy_HH-mm-ss") + ".txt";
+            Directory.CreateDirectory(log_directory);
+
+            // Delete files in the log directory that are longer then a week old - to avoid clogging folder with files
+            string[] files = Directory.GetFiles(log_directory);
+            foreach (string file in files)
+            {
+                FileInfo info = new FileInfo(file);
+                if (info.LastAccessTime < DateTime.Now.AddDays(-7))
+                {
+                    info.Delete();
+                }   
+            }
+
+            // Check if token file exists
+            token_directory = Path.GetTempPath();
+            token_file = token_directory + @"\aasp.token";
+            if (File.Exists(token_file))
+            {
+                Error("Reading user info from file");
+
+                // Read refresh token to get access token without user having to authenticate again
+                string[] info_list = File.ReadAllText(token_file).Trim().Split(':');
+
+                // Save refresh token for refresh function
+                Master.client_refresh_token = info_list[0];
+
+                // Get new token through task in the background
+                Task ignore_1 = Refresh.RefeshData();
+
+                // Current unix time
+                long current_time = ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeSeconds();
+                // Saved unix time
+                long saved_time = long.Parse(info_list[4]);
+
+                if (current_time - saved_time <= 604800)
+                {
+                    // Save data to client variables
+                    Master.client_premium = info_list[1].Contains("True");
+                    Master.client_nsfw = info_list[2].Contains("True");
+                    Master.client_country = info_list[3];
+
+                    // List information in log file
+                    Error("Information read from file!");
+                    Error("Premium: " + Master.client_premium.ToString());
+                    Error("Show NSFW: " + Master.client_nsfw.ToString());
+                    Error("Country: " + Master.client_country);
+                }
+                else
+                {
+                    Error("Information stored in file is over a week old!");
+                    Error("User info will be requested again to update to latest information.");
+                    
+                    while (true)
+                    {
+                        // Client token must exist for the user info request
+                        if (Master.client_access_token != null)
+                        {
+                            // Save current user info
+                            Task ignore_2 = Request.GetUserInfo();
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        internal static bool Error(string message)
+        {
+            try
+            {
+                using (StreamWriter sw = File.AppendText(log_file))
+                {
+                    sw.WriteLine(DateTime.Now.ToString("[dd/MM/yyyy hh:mm:ss.fff tt] ") + message);
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        internal static bool SaveToken()
+        {
+            try
+            {
+                // Save required information to the token file
+                File.WriteAllText(token_file, Master.client_refresh_token + ":" + Master.client_premium + ":" + Master.client_nsfw + ":" + Master.client_country + ":" + ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeSeconds());
+                return true;
+            }
+            catch (Exception e)
+            {
+                Error("Attempted to save token but ran into error: " + e.Message);
+                return false;
+            }
+        }
+
+        internal static bool DeleteToken()
+        {
+            try
+            {
+                File.Delete(token_file);
+                return true;
+            }
+            catch (Exception e)
+            {
+                Error("Attempted to delete token but ran into error: " + e.Message);
+                return false;
+            }
+        }
+    }
+
     public class Security
     {
-        internal static string EncryptString(string key, string plainText)
-        {
-            byte[] iv = new byte[16];
-            byte[] array;
-
-            using (Aes aes = Aes.Create())
-            {
-                aes.Key = Encoding.UTF8.GetBytes(key);
-                aes.IV = iv;
-
-                ICryptoTransform encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-
-                using (MemoryStream memoryStream = new MemoryStream())
-                {
-                    using (CryptoStream cryptoStream = new CryptoStream((Stream)memoryStream, encryptor, CryptoStreamMode.Write))
-                    {
-                        using (StreamWriter streamWriter = new StreamWriter((Stream)cryptoStream))
-                        {
-                            streamWriter.Write(plainText);
-                        }
-
-                        array = memoryStream.ToArray();
-                    }
-                }
-            }
-
-            return Convert.ToBase64String(array);
-        }
-
-        internal static string DecryptString(string key, string cipherText)
-        {
-            byte[] iv = new byte[16];
-            byte[] buffer = Convert.FromBase64String(cipherText);
-
-            using (Aes aes = Aes.Create())
-            {
-                aes.Key = Encoding.UTF8.GetBytes(key);
-                aes.IV = iv;
-                ICryptoTransform decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-
-                using (MemoryStream memoryStream = new MemoryStream(buffer))
-                {
-                    using (CryptoStream cryptoStream = new CryptoStream((Stream)memoryStream, decryptor, CryptoStreamMode.Read))
-                    {
-                        using (StreamReader streamReader = new StreamReader((Stream)cryptoStream))
-                        {
-                            return streamReader.ReadToEnd();
-                        }
-                    }
-                }
-            }
-        }
-
         internal static string RandomString(int length)
         {
             if (length < 0) throw new ArgumentOutOfRangeException("length", "length cannot be less than zero.");
@@ -105,19 +177,19 @@ namespace ArmaSpotifyController
                 return result.ToString();
             }
         }
-
     }
 
     public class Refresh
     {
         // Internal refresh token timer
         private static Timer refresh_timer;
+        private static int refresh_interval = 3_000 * 1_000;
 
         public static void RefreshTokenLoop()
         {
             // Tokens last 3600 seconds, aka. 1 hour.
             // Attempt to refresh every 50 minutes to allow 10 minutes for errors
-            refresh_timer = new Timer(3000 * 1000);
+            refresh_timer = new Timer(refresh_interval);
             refresh_timer.Elapsed += RefreshToken;
             refresh_timer.AutoReset = true;
             refresh_timer.Enabled = true;
@@ -125,65 +197,61 @@ namespace ArmaSpotifyController
 
         public async static Task RefeshData()
         {
-            // Setup POST data
-            var values = new Dictionary<string, string>
+            try
             {
+                // Setup POST data
+                var values = new Dictionary<string, string>
+                {
+                    { "grant_type", "refresh_token" },
+                    { "refresh_token", Master.client_refresh_token },
+                    { "client_id", Master.app_client_id }
+                };
+                var content = new FormUrlEncodedContent(values);
 
-                { "grant_type", "refresh_token" },
-                { "refresh_token", Master.client_refresh_token },
-                { "client_id", Master.app_client_id }
-            };
-            var content = new FormUrlEncodedContent(values);
-
-            String data = null;
-            for (int i = 0; i < 5; i++)
-            {
                 var response = await Master.client.PostAsync("https://accounts.spotify.com/api/token", content);
-
-                // Give time for data to load if
-                await Task.Delay(5_000);
 
                 if (response.IsSuccessStatusCode)
                 {
                     // Save response to variable for later use
-                    data = await response.Content.ReadAsStringAsync();
+                    String data = await response.Content.ReadAsStringAsync();
+
+                    int pFrom_access = data.IndexOf("\"access_token\": \"") + "\"access_token\": \"".Length;
+                    int pTo_access = data.LastIndexOf("\",\"token_type\"");
+
+                    int pFrom_refresh = data.IndexOf("\"refresh_token\": \"") + "\"refresh_token\": \"".Length;
+                    int pTo_refresh = data.LastIndexOf("\",\"scope\"");
+
+                    String result_access = data.Substring(pFrom_access + 1, (pTo_access - 1) - pFrom_access);
+                    String result_refresh = data.Substring(pFrom_refresh + 1, (pTo_refresh - 1) - pFrom_refresh);
+
+                    Master.client_access_token = result_access;
+                    Master.client_refresh_token = result_refresh;
+
+                    Log.Error("Users refresh token has been updated successfully");
+
+                    // Success - reset timer incase it was changed
+                    refresh_timer.Interval = refresh_interval;
                 }
                 else
                 {
                     // Non-rate limited errors break the loop
                     if (response.StatusCode != (HttpStatusCode)429)
                     {
-                        break;
+                        Log.Error(response.StatusCode.ToString() + " error occured. Attempting again in 1 minute");
+                        // An error occured, try again in a minute
+                        refresh_timer.Interval = 60 * 1_000;
                     }
                     else
                     {
+                        Log.Error("Attempted to gather refresh token, ran into rate limit. Attempting again in 5 seconds");
                         // Wait for rate limit
                         await Task.Delay(5_000);
                     }
                 }
             }
-
-            if (data != null)
+            catch (Exception e)
             {
-                int pFrom_access = data.IndexOf("\"access_token\": \"") + "\"access_token\": \"".Length;
-                int pTo_access = data.LastIndexOf("\",\"token_type\"");
-
-                int pFrom_refresh = data.IndexOf("\"refresh_token\": \"") + "\"refresh_token\": \"".Length;
-                int pTo_refresh = data.LastIndexOf("\",\"scope\"");
-
-                String result_access = data.Substring(pFrom_access + 1, (pTo_access - 1) - pFrom_access);
-                String result_refresh = data.Substring(pFrom_refresh + 1, (pTo_refresh - 1) - pFrom_refresh);
-
-                Master.client_access_token = result_access;
-                Master.client_refresh_token = result_refresh;
-
-                // Success - reset timer incase it was changed
-                refresh_timer.Interval = 3000 * 1000;
-            }
-            else
-            {
-                // An error occured, try again in a minute
-                refresh_timer.Interval = 60 * 1000;
+                Log.Error(e.Message);
             }
         }
 
@@ -194,123 +262,51 @@ namespace ArmaSpotifyController
 
     }
 
-    public class Data
+    public class Request
     {
-        public static bool InternetConnection()
+        public async static Task GetUserInfo()
         {
             try
             {
-                using (var client = new WebClient())
-                using (client.OpenRead("http://google.com/generate_204"))
-                    return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+                var response = await Master.client.GetAsync("https://api.spotify.com/v1/me");
 
-        public async static void RequestData_Authorise(string post_url, FormUrlEncodedContent content)
-        {
-            // Send request + content in POST 
-            var response = await Master.client.PostAsync(post_url, content);
-
-            if (response.IsSuccessStatusCode)
-            {
-                // Save response to variable for later use
-                Master.authorise_response = await response.Content.ReadAsStringAsync();
-            }
-            else
-            {
-                // Check if we are being rate limited
-                if (response.StatusCode == (HttpStatusCode)429)
-                {
-                    Master.authorise_response = "RATE_LIMIT";
-                }
-                else
-                {
-                    Master.authorise_response = "";
-                }
-            }
-        }
-
-        public async static void Get_Client_Info()
-        {
-            // Set authorization headers
-            Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
-
-            // Send request + content in GET 
-            var response = await Master.client.GetAsync("https://api.spotify.com/v1/me");
-
-            if (response.IsSuccessStatusCode)
-            {
-                // Save response to variable for later use
-                Master.get_response = await response.Content.ReadAsStringAsync();
-            }
-            else
-            {
-                // Check if we are being rate limited
-                if (response.StatusCode == (HttpStatusCode)429)
-                {
-                    Master.get_response = "RATE_LIMIT";
-                }
-                else
-                {
-                    Master.get_response = "";
-                }
-            }
-            Set_Client_Info();
-        }
-
-        public static void Set_Client_Info()
-        {
-            if (Master.get_response != "")
-            {
-                if (Master.get_response != "RATE_LIMIT")
+                if (response.IsSuccessStatusCode)
                 {
                     // Save response to variable for later use
-                    var data = Master.get_response;
+                    String data = await response.Content.ReadAsStringAsync();
 
-                    String result_product = data.Substring(10, 5);
-                    //String result_country = match_country.Value.Substring(12);
-                    //String result_name = data.Substring(pFrom_name + 1, (pTo_name - 1) - pFrom_name);
-                    //String result_explicit = match_explicit.Value.Substring(17);
+                    Master.client_premium = data.Contains("\"product\" : \"premium\"");
+                    Master.client_nsfw = data.Contains("\"filter_enabled\" : false");
+                    Master.client_country = data.Substring(data.IndexOf("\"country\" : \"") + 13, 2);
+                    Log.Error("Premium: " + Master.client_premium.ToString());
+                    Log.Error("Show NSFW: " + Master.client_nsfw.ToString());
+                    Log.Error("Country: " + Master.client_country);
 
-                    //Master.client_premium = true;//result_product == "premium";
-                    //Master.client_country = data.Substring(18, 2);
-                    //Master.client_name = Master.get_response;
-                    //Master.client_show_explicit = result_explicit == "false";
+                    // Save information + refresh token to token file
+                    Log.SaveToken();
 
-                    // This is only used to check if we have alreay got the users info
-                    Master.client_ready = "true";
-                }
-            }
-        }
-
-        public async static void GetRequest(string get_url, String header_title, String header_body)
-        {
-            // Set authorization headers
-            Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(header_title, header_body);
-
-            // Send request + content in GET 
-            var response = await Master.client.GetAsync(get_url);
-
-            if (response.IsSuccessStatusCode)
-            {
-                // Save response to variable for later use
-                Master.get_response = await response.Content.ReadAsStringAsync();
-            }
-            else
-            {
-                // Check if we are being rate limited
-                if (response.StatusCode == (HttpStatusCode)429)
-                {
-                    Master.get_response = "RATE_LIMIT";
+                    // Callback to game to let it know user info has been saved
+                    Master.callback.Invoke("ArmaSpotifyController","setVariable","[\"missionnamespace\", \"aasp_info_saved\", true, false]");
                 }
                 else
                 {
-                    Master.get_response = "";
+                    if (response.StatusCode != (HttpStatusCode)429)
+                    {
+                        Log.Error("ERROR: " + response.StatusCode.ToString());
+                        Master.get_async_response = "ERROR: " + response.StatusCode.ToString();
+                    }
+                    else
+                    {
+                        Log.Error("ERROR: Rate limited");
+                        Master.get_async_response = "ERROR: Rate limited";
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e.Message);
             }
         }
     }
@@ -325,24 +321,35 @@ namespace ArmaSpotifyController
         internal static string client_refresh_token;
         internal static string client_access_token;
 
-        // Client variables
-        internal static string client_ready;
+        // Client information
         internal static bool client_premium;
+        internal static bool client_nsfw;
         internal static string client_country;
-        internal static string client_name;
-        internal static bool client_show_explicit;
+
+        // Async returns
+        internal static string get_async_response;
 
         // HttpClient for posting data to Spotify
         internal static readonly HttpClient client = new HttpClient();
 
         // Variables containing important information
         internal static string verifier_string;
-        internal static string id;
         internal static int state;
 
-        // Async responses
-        internal static string authorise_response;
-        internal static string get_response;
+        // Function call back stuff
+        public static ExtensionCallback callback;
+        public delegate int ExtensionCallback([MarshalAs(UnmanagedType.LPStr)] string name, [MarshalAs(UnmanagedType.LPStr)] string function, [MarshalAs(UnmanagedType.LPStr)] string data);
+
+        // Do not remove these six lines
+#if WIN64
+        [DllExport("RVExtensionRegisterCallback", CallingConvention = CallingConvention.Winapi)]
+#else
+        [DllExport("_RVExtensionRegisterCallback@4", CallingConvention = CallingConvention.Winapi)]
+#endif
+        public static void RVExtensionRegisterCallback([MarshalAs(UnmanagedType.FunctionPtr)] ExtensionCallback func)
+        {
+            callback = func;
+        }
 
         // Do not remove these six lines
 #if WIN64
@@ -355,6 +362,12 @@ namespace ArmaSpotifyController
             // Reduce output by 1 to avoid accidental overflow
             outputSize--;
 
+            // Log setup called
+            Log.Error("DLL setup running");
+
+            // Setup log file and stuff for error logging
+            Log.Setup();
+
             // Generate a new state key
             RNGCryptoServiceProvider generator = new RNGCryptoServiceProvider();
 
@@ -366,22 +379,6 @@ namespace ArmaSpotifyController
 
             // Convert to int 32
             state = BitConverter.ToInt32(data, 0);
-
-            // Get disk drives
-            var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_DiskDrive");
-
-            // Create unique ID for computer/user
-            foreach (ManagementObject wmi_HD in searcher.Get())
-            {
-                // Gather information
-                id += wmi_HD["Model"].ToString();
-                id += wmi_HD["InterfaceType"].ToString();
-                id += wmi_HD["Caption"].ToString();
-                id += wmi_HD.GetPropertyValue("SerialNumber").ToString();
-            }
-
-            // Create base64 string ID
-            id = Convert.ToBase64String(Encoding.UTF8.GetBytes(id));
             
             // Auto output the version information to the report file
             output.Append(version_info);
@@ -398,12 +395,6 @@ namespace ArmaSpotifyController
             // Reduce output by 1 to avoid accidental overflow
             outputSize--;
 
-            if(!Data.InternetConnection())
-            {
-                output.Append("ERROR: Internet connection is required for this mod");
-                return;
-            }
-
             // Split on the spacers, in this case ":"
             String[] parameters = function.Split(':');
 
@@ -413,16 +404,20 @@ namespace ArmaSpotifyController
                 if (parameters.Length > 1)
                 {
                     switch (parameters[1].ToLower())
-                    {                        
-                        // GET_USER_INFO: Check user info
-                        case "get_user_info":
-                            output.Append(client_name);
+                    {
+                        // PREMIUM: Returns if the user who has authorised has an active Spotify Premium subscription
+                        case "premium":
+                            output.Append(client_premium.ToString());
                             break;
 
-                        // SET_USER_INFO: Check user info
-                        case "set_user_info":
-                            Data.Get_Client_Info();
-                            output.Append("AAA");
+                        // PLAY: Starts/resumes users playback of the current song/defined song
+                        case "play":
+                            output.Append("play");
+                            break;
+
+                        // PAUSE: Pauses users playback of the current song
+                        case "pause":
+                            output.Append("pause");
                             break;
 
                         // DEFAULT: Show version information
@@ -441,50 +436,8 @@ namespace ArmaSpotifyController
                 // Switch through all the other options
                 switch (parameters[0].ToLower())
                 {
-                    // AUTHORISE: Get async response and save
+                    // AUTHORISE: Receive authorise information from the user to get token
                     case "authorise":
-                        String data = authorise_response;
-                        if (data != null)
-                        {
-                            if (data != "")
-                            {
-                                if (data != "RATE_LIMIT")
-                                {
-                                    int pFrom_access = data.IndexOf("\"access_token\": \"") + "\"access_token\": \"".Length;
-                                    int pTo_access = data.LastIndexOf("\",\"token_type\"");
-
-                                    int pFrom_refresh = data.IndexOf("\"refresh_token\": \"") + "\"refresh_token\": \"".Length;
-                                    int pTo_refresh = data.LastIndexOf("\",\"scope\"");
-
-                                    String result_access = data.Substring(pFrom_access + 1, (pTo_access - 1) - pFrom_access);
-                                    String result_refresh = data.Substring(pFrom_refresh + 1, (pTo_refresh - 1) - pFrom_refresh);
-
-                                    client_access_token = result_access;
-                                    client_refresh_token = result_refresh;
-
-                                    // Start the refresh timer
-                                    Refresh.RefreshTokenLoop();
-
-                                    output.Append("Success");
-                                }
-                                else
-                                {
-                                    output.Append("ERROR: Rate limit reached. Try again in a couple of seconds.");
-                                }                                
-                            }
-                            else
-                            {
-                                output.Append("ERROR: Request did not return any data. Reauthorization required!");
-                            }
-                        }
-                        else
-                        {
-                            output.Append("ERROR: Request for data timed out. Reauthorization required!");
-                        }
-                        break;                        
-
-                    // AUTHORISE_SUBMIT: Receive authorise information from the user to get token
-                    case "authorise_submit":
                         if (parameters.Length >= 3)
                         {
                             String user_code = parameters[1];
@@ -506,26 +459,77 @@ namespace ArmaSpotifyController
                                 };
                                 var content = new FormUrlEncodedContent(values);
 
-                                // Send async post request to spotify
-                                Data.RequestData_Authorise(post_url, content);
+                                // Send request + content in POST 
+                                var response = await client.PostAsync(post_url, content);
 
-                                output.Append("Async request sent");
+                                if (response.IsSuccessStatusCode)
+                                {
+                                    // Save response to variable for later use
+                                    String data = await response.Content.ReadAsStringAsync();
+
+                                    int pFrom_access = data.IndexOf("access_token") + 15;
+                                    int pTo_access = data.IndexOf("token_type") - 3;
+
+                                    int pFrom_refresh = data.IndexOf("refresh_token") + 16;
+                                    int pTo_refresh = data.LastIndexOf("scope") - 3;
+
+                                    String result_access = data.Substring(pFrom_access, pTo_access - pFrom_access);
+                                    String result_refresh = data.Substring(pFrom_refresh, pTo_refresh - pFrom_refresh);
+
+                                    client_access_token = result_access;
+                                    client_refresh_token = result_refresh;
+
+                                    // Start the refresh timer
+                                    Refresh.RefreshTokenLoop();
+
+                                    // Callback to game to let it know user is authorised
+                                    Master.callback.Invoke("ArmaSpotifyController", "setVariable", "[\"missionnamespace\", \"aasp_authorised\", true, false]");
+
+                                    // Save user info to client variables in DLL for later use
+                                    Task ignore = Request.GetUserInfo();
+
+                                    Log.Error("User authentication success");
+                                    output.Append("User authentication success");
+                                    break;
+                                }
+                                else
+                                {
+                                    // Check if we are being rate limited
+                                    if (response.StatusCode == (HttpStatusCode)429)
+                                    {
+                                        Log.Error("[" + function + "]" + "ERROR: Request was rate limited, try again in a few seconds.");
+                                        output.Append("ERROR: Request was rate limited, try again in a few seconds.");
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        Log.Error("[" + function + "]" + "ERROR: Post request returned error status code (" + response.StatusCode.ToString() + ")");
+                                        output.Append("ERROR: Post request returned error status code (" + response.StatusCode.ToString() + ")");
+                                        break;
+                                    }
+                                }
                             }
                             else
                             {
                                 // Missing state key
+                                Log.Error("ERROR: Incorrect 'state' key. Reauthorization required!");
                                 output.Append("ERROR: Incorrect 'state' key. Reauthorization required!");
+                                break;
                             }
                         }
                         else
                         {
                             // Incorrect input
-                            output.Append("ERROR: Missing key and state parameter for authorisiation.");
+                            Log.Error("ERROR: Missing 'key' and 'state' parameter for authorisiation.");
+                            output.Append("ERROR: Missing 'key' and 'state' parameter for authorisiation.");
+                            break;
                         };
-                        break;
 
-                    // AUTHORISE_REQUEST: Open url to allow the user to authorise this application
-                    case "authorise_request":
+                    // AUTHORISE_WEBSITE: Open url to allow the user to authorise this application
+                    case "authorise_website":
+                        // User wants to re-authenticate, delete the old token file
+                        Log.DeleteToken();
+
                         // Create code verifier
                         verifier_string = Security.RandomString(110);
 
@@ -564,119 +568,7 @@ namespace ArmaSpotifyController
                         // DO NOT ALLOW USER TO CUSTOMIZE THIS.
                         System.Diagnostics.Process.Start(string.Format("https://accounts.spotify.com/authorize?{0}", string.Join("&", parameters_dict.Select(kvp => string.Format("{0}={1}", kvp.Key, kvp.Value)))));
                         break;
-
-                    // ACCESS: All the access stuff
-                    case "access":
-                        if (parameters.Length >= 2)
-                        {
-                            switch (parameters[1].ToLower())
-                            {
-                                // Setting the variable
-                                case "set":
-                                    if (parameters.Length >= 3)
-                                    {
-                                        client_access_token = parameters[2];
-                                        output.Append("Access token saved");
-                                    }
-                                    else
-                                    {
-                                        output.Append("ERROR: No access token given");
-                                    }
-                                    break;
-
-                                // Getting the variable
-                                case "get":
-                                    if (client_access_token != null)
-                                    {
-                                        output.Append(Security.EncryptString(id,client_access_token));
-                                    }
-                                    else
-                                    {
-                                        output.Append("ERROR: No access token found");
-                                    }                                    
-                                    break;
-
-                                // Checking the variable
-                                case "check":
-                                    if (parameters.Length >= 3)
-                                    {
-                                        String input = parameters[2];
-                                        bool check_bool = Security.DecryptString(id, input) == client_access_token;
-                                        output.Append(check_bool.ToString().ToLower());
-                                    }
-                                    else
-                                    {
-                                        output.Append("ERROR: No access token given");
-                                    }
-                                    break;
-
-                                default:
-                                    output.Append("ERROR: Missing second parameter");
-                                    break;
-                            }                            
-                        }
-                        else
-                        {
-                            output.Append("ERROR: Not enough parameters passed to function call");
-                        }
-                        break;
-
-                    // REFRESH: All the refresh stuff
-                    case "refresh":
-                        if (parameters.Length >= 2)
-                        {
-                            switch (parameters[1].ToLower())
-                            {
-                                // Setting the variable
-                                case "set":
-                                    if (parameters.Length >= 3)
-                                    {
-                                        client_refresh_token = parameters[2];
-                                        output.Append("Refresh token saved");
-                                    }
-                                    else
-                                    {
-                                        output.Append("ERROR: No refresh token given");
-                                    }
-                                    break;
-
-                                // Getting the variable
-                                case "get":
-                                    if (client_refresh_token != null)
-                                    {
-                                        output.Append(Security.EncryptString(id, client_refresh_token));
-                                    }
-                                    else
-                                    {
-                                        output.Append("ERROR: No refresh token found");
-                                    }
-                                    break;
-
-                                // Checking the variable
-                                case "check":
-                                    if (parameters.Length >= 3)
-                                    {
-                                        String input = parameters[2];
-                                        bool check_bool = Security.DecryptString(id, input) == client_refresh_token;
-                                        output.Append(check_bool.ToString().ToLower());
-                                    }
-                                    else
-                                    {
-                                        output.Append("ERROR: No refresh token given");
-                                    }
-                                    break;
-
-                                default:
-                                    output.Append("ERROR: Missing second parameter");
-                                    break;
-                            }
-                        }
-                        else
-                        {
-                            output.Append("ERROR: Not enough parameters passed to function call");
-                        }
-                        break;
-
+                    
                     // AUTHORISED: Check if the user is already authorised
                     case "authorised":
                         bool check = client_access_token != null && client_refresh_token != null;
@@ -686,6 +578,27 @@ namespace ArmaSpotifyController
                     // LEGAL: View legal information about mod
                     case "legal":
                         output.Append("Go to https://github.com/Asaayu/Arma-Spotify-Player to view the GitHub repo and view important legal information.");
+                        break;
+
+                    // PREMIUM_WEBSITE: Open Spotify Premium webpage, redirects to local version
+                    case "premium_website":
+                        System.Diagnostics.Process.Start("https://www.spotify.com/premium/");
+                        break;
+
+                    // ERROR: Log error to log file for debuging help later
+                    case "error":
+                        Log.Error(parameters[1]);
+                        output.Append("true");
+                        break;
+
+                    // LOG: Show where logs are being saved to
+                    case "log":                        
+                        output.Append(Log.log_directory);
+                        break;
+                        
+                    // TOKEN: Show where tokens are being saved to
+                    case "token":                        
+                        output.Append(Log.token_directory);
                         break;
 
                     // DEFAULT: Show version information

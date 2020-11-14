@@ -22,4 +22,11 @@ class ctrlControlsGroupNoHScrollbars;
 class ctrlButton;
 class ctrlEdit;
 
+// Spotify GUI
+#include "spotify.hpp"
+
+// Setup GUI
 #include "setup.hpp"
+
+// Premium Required GUI
+#include "premium.hpp"

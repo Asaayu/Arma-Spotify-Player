@@ -20,6 +20,11 @@ class CfgFunctions
 		class spotify_setup_functions
 		{
 		        file = "\spotify\functions_f_spotify\functions";
+			class preinit
+			{
+				preInit = 1;
+			};
+			class setup_onload {};
 			class menu_onload {};
 			class verify_extension {};
 			class authenticate_display {};
