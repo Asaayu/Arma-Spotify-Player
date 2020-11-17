@@ -31,3 +31,4 @@ You can find a list of all the avaliable scopes [on the Spotify developer websit
 
 **To remove this applications access to your Spotify account visit your [Spotify account apps page](https://www.spotify.com/us/account/apps/) and click *REMOVE ACCESS*  beside the "Asaayu's Arma Spotify Player" application**
 
+This mod uses Bootstrap icons, licensed under the MIT license. Go to the [Bootstrap Icon Repository](https://github.com/twbs/icons/blob/main/LICENSE.md) to view the license.
