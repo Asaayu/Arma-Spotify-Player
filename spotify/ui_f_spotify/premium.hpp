@@ -125,6 +125,13 @@ class AASP_premium
 			colorText[] = {1,1,1,1};
 			onButtonClick = "'ArmaSpotifyController' callExtension 'premium_website'";
 		};
+		class authorise_button: premium_button
+                {
+			idc = 15007;
+			text = "Reauthorise";
+			y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + 79 * (pixelH * pixelGridNoUIScale * 0.50)";
+			onButtonClick = "_this spawn {private _display = ctrlParent (_this#0);  private _master = displayParent _display; _display closeDisplay 2; _master createDisplay 'AASP_setup';};";
+		};
 		class legal_footer_01: ctrlStatic
                 {
 			idc = 15011;

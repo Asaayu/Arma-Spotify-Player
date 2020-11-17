@@ -12,9 +12,81 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Web;
+using System.Diagnostics;
 
 namespace ArmaSpotifyController
 {
+    public class Image
+    {
+        // Image directory
+        internal static string image_directory;
+
+        internal static void Setup()
+        {
+            // Set file directory
+            image_directory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\data";
+            Directory.CreateDirectory(image_directory);
+
+            // Log the image directory
+            Log.Message("Image_directory: " + image_directory);
+
+            // Delete files in the image directory that are longer then a week old
+            string[] files = Directory.GetFiles(image_directory);
+            foreach (string file in files)
+            {
+                FileInfo info = new FileInfo(file);
+                if (info.LastAccessTime < DateTime.Now.AddDays(-7))
+                {
+                    info.Delete();
+                }
+            }
+        }
+
+        internal static async Task DownloadImage(string uri_string, string variable = "")
+        {
+            try
+            {
+                // Create new URI from string input
+                Uri uri = new Uri(uri_string);
+
+                // Get filename from Spotify web server                
+                string filename = Path.GetFileNameWithoutExtension(uri.LocalPath);
+
+                // Create file path along with new extension
+                var path = Path.Combine(image_directory, filename + ".jpg");
+
+                if (!File.Exists(path.ToString()))
+                {
+                    // Download the image and write to the file
+                    var imageBytes = await Master.client.GetByteArrayAsync(uri);
+                    File.WriteAllBytes(path, imageBytes);
+
+                    Log.Message("Downloaded file: " + path);
+                }
+                else
+                {
+                    // File already exists
+                    Log.Message("File already exists on disk: " + filename + ".jpg");
+                }
+
+                if (variable != "")
+                {
+                    Master.callback.Invoke("ArmaSpotifyController", "ctrlSetText", path + "|" + variable);
+                }
+            }
+            catch (Exception e)
+            {
+                if (variable != "")
+                {
+                    Master.callback.Invoke("ArmaSpotifyController", "ctrlSetText", "#(rgb,8,8,3)color(0.3,0.3,0.3,1)" + "|" + variable);
+                }
+
+                Log.Message("Attempted to load image from URL but ran into error: " + e.Message);
+                Log.Message("Uri: " + uri_string);
+            }            
+        }
+    }
+
     public class Log
     {
         // Log directory and current log file path
@@ -29,7 +101,7 @@ namespace ArmaSpotifyController
         {
             // Set file directory
             log_directory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\logs";
-            log_file = log_directory + @"\SpotifyController_" + DateTime.Now.ToString("dd-MM-yyyy_HH-mm-ss") + ".txt";
+            log_file = log_directory + @"\ArmaSpotifyController_" + DateTime.Now.ToString("dd-MM-yyyy_HH-mm-ss") + ".txt";
             Directory.CreateDirectory(log_directory);
 
             // Delete files in the log directory that are longer then a week old - to avoid clogging folder with files
@@ -48,61 +120,26 @@ namespace ArmaSpotifyController
             token_file = token_directory + @"\aasp.token";
             if (File.Exists(token_file))
             {
-                Error("Reading user info from file");
+                Message("Reading user info from file");
 
                 // Read refresh token to get access token without user having to authenticate again
-                string[] info_list = File.ReadAllText(token_file).Trim().Split(':');
+                string token = File.ReadAllText(token_file).Trim();
 
                 // Save refresh token for refresh function
-                Master.client_refresh_token = info_list[0];
+                Master.client_refresh_token = token;
 
                 // Get new token through task in the background
-                Task ignore_1 = Refresh.RefeshData();
-
-                // Current unix time
-                long current_time = ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeSeconds();
-                // Saved unix time
-                long saved_time = long.Parse(info_list[4]);
-
-                if (current_time - saved_time <= 604800)
-                {
-                    // Save data to client variables
-                    Master.client_premium = info_list[1].Contains("True");
-                    Master.client_nsfw = info_list[2].Contains("True");
-                    Master.client_country = info_list[3];
-
-                    // List information in log file
-                    Error("Information read from file!");
-                    Error("Premium: " + Master.client_premium.ToString());
-                    Error("Show NSFW: " + Master.client_nsfw.ToString());
-                    Error("Country: " + Master.client_country);
-                }
-                else
-                {
-                    Error("Information stored in file is over a week old!");
-                    Error("User info will be requested again to update to latest information.");
-                    
-                    while (true)
-                    {
-                        // Client token must exist for the user info request
-                        if (Master.client_access_token != null)
-                        {
-                            // Save current user info
-                            Task ignore_2 = Request.GetUserInfo();
-                            break;
-                        }
-                    }
-                }
+                Task ignore = Refresh.RefeshData(true);
             }
         }
 
-        internal static bool Error(string message)
+        internal static bool Message(string message)
         {
             try
             {
                 using (StreamWriter sw = File.AppendText(log_file))
                 {
-                    sw.WriteLine(DateTime.Now.ToString("[dd/MM/yyyy hh:mm:ss.fff tt] ") + message);
+                    sw.WriteLine(DateTime.Now.ToString("[dd/MM/yyyy hh:mm:ss tt] ") + message);
                 }
                 return true;
             }
@@ -117,12 +154,12 @@ namespace ArmaSpotifyController
             try
             {
                 // Save required information to the token file
-                File.WriteAllText(token_file, Master.client_refresh_token + ":" + Master.client_premium + ":" + Master.client_nsfw + ":" + Master.client_country + ":" + ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeSeconds());
+                File.WriteAllText(token_file, Master.client_refresh_token);
                 return true;
             }
             catch (Exception e)
             {
-                Error("Attempted to save token but ran into error: " + e.Message);
+                Message("Attempted to save token but ran into error: " + e.Message);
                 return false;
             }
         }
@@ -136,7 +173,7 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Error("Attempted to delete token but ran into error: " + e.Message);
+                Message("Attempted to delete token but ran into error: " + e.Message);
                 return false;
             }
         }
@@ -195,7 +232,7 @@ namespace ArmaSpotifyController
             refresh_timer.Enabled = true;
         }
 
-        public async static Task RefeshData()
+        public async static Task RefeshData(bool save_info = false)
         {
             try
             {
@@ -215,19 +252,32 @@ namespace ArmaSpotifyController
                     // Save response to variable for later use
                     String data = await response.Content.ReadAsStringAsync();
 
-                    int pFrom_access = data.IndexOf("\"access_token\": \"") + "\"access_token\": \"".Length;
-                    int pTo_access = data.LastIndexOf("\",\"token_type\"");
+                    int pFrom_access = data.IndexOf("access_token") + 15;
+                    int pTo_access = data.IndexOf("token_type") - 3;
 
-                    int pFrom_refresh = data.IndexOf("\"refresh_token\": \"") + "\"refresh_token\": \"".Length;
-                    int pTo_refresh = data.LastIndexOf("\",\"scope\"");
+                    int pFrom_refresh = data.IndexOf("refresh_token") + 16;
+                    int pTo_refresh = data.LastIndexOf("scope") - 3;
 
-                    String result_access = data.Substring(pFrom_access + 1, (pTo_access - 1) - pFrom_access);
-                    String result_refresh = data.Substring(pFrom_refresh + 1, (pTo_refresh - 1) - pFrom_refresh);
+                    String result_access = data.Substring(pFrom_access, pTo_access - pFrom_access);
+                    String result_refresh = data.Substring(pFrom_refresh, pTo_refresh - pFrom_refresh);
 
                     Master.client_access_token = result_access;
                     Master.client_refresh_token = result_refresh;
 
-                    Log.Error("Users refresh token has been updated successfully");
+                    // Delete old token file
+                    Log.DeleteToken();
+
+                    // Save new refresh token
+                    Log.SaveToken();
+
+                    Log.Message("Users refresh token has been updated successfully");
+
+                    if (save_info)
+                    {
+                        Log.Message("Starting user info task request");
+
+                        Task ignore_2 = Request.GetUserInfo();
+                    }
 
                     // Success - reset timer incase it was changed
                     refresh_timer.Interval = refresh_interval;
@@ -237,13 +287,14 @@ namespace ArmaSpotifyController
                     // Non-rate limited errors break the loop
                     if (response.StatusCode != (HttpStatusCode)429)
                     {
-                        Log.Error(response.StatusCode.ToString() + " error occured. Attempting again in 1 minute");
+                        Log.Message("Error: " + response.StatusCode.ToString());
+                        Log.Message(response.ReasonPhrase);
                         // An error occured, try again in a minute
                         refresh_timer.Interval = 60 * 1_000;
                     }
                     else
                     {
-                        Log.Error("Attempted to gather refresh token, ran into rate limit. Attempting again in 5 seconds");
+                        Log.Message("Attempted to gather refresh token, ran into rate limit. Attempting again in 5 seconds");
                         // Wait for rate limit
                         await Task.Delay(5_000);
                     }
@@ -251,7 +302,7 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Error(e.Message);
+                Log.Message(e.Message);
             }
         }
 
@@ -262,9 +313,66 @@ namespace ArmaSpotifyController
 
     }
 
+    public class Player
+    {
+        // Internal refresh token timer
+        private static Timer player_timer;
+        private static int player_interval = 5_000;
+
+        internal static void PlayerLoop()
+        {
+            // Tokens last 3600 seconds, aka. 1 hour.
+            // Attempt to refresh every 50 minutes to allow 10 minutes for errors
+            player_timer = new Timer(player_interval);
+            player_timer.Elapsed += PlayerToken;
+            player_timer.AutoReset = true;
+            player_timer.Enabled = true;
+        }
+
+        internal async static Task PlayerData()
+        {
+            try
+            {
+                // Get Information About The User's Current Playback
+                var response = await Master.client.GetAsync("https://api.spotify.com/v1/me/player");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    // Save response to variable for later use
+                    String data = await response.Content.ReadAsStringAsync();
+
+                    if (data.Length <= 0)
+                    {
+                        // No devices found
+                        Log.Message("No devices found for playback");
+                    }
+                    else
+                    {
+                        Log.Message(data);
+                    }
+                }
+                else
+                {
+                    Log.Message("Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message(e.Message);
+            }
+        }
+
+        internal static void PlayerToken(Object source, ElapsedEventArgs e)
+        {
+            Task ignore = PlayerData();
+        }
+
+    }
+
     public class Request
     {
-        public async static Task GetUserInfo()
+        internal async static Task GetUserInfo()
         {
             try
             {
@@ -280,35 +388,333 @@ namespace ArmaSpotifyController
                     Master.client_premium = data.Contains("\"product\" : \"premium\"");
                     Master.client_nsfw = data.Contains("\"filter_enabled\" : false");
                     Master.client_country = data.Substring(data.IndexOf("\"country\" : \"") + 13, 2);
-                    Log.Error("Premium: " + Master.client_premium.ToString());
-                    Log.Error("Show NSFW: " + Master.client_nsfw.ToString());
-                    Log.Error("Country: " + Master.client_country);
-
-                    // Save information + refresh token to token file
-                    Log.SaveToken();
+                    Log.Message("Premium: " + Master.client_premium.ToString().ToLower());
+                    Log.Message("Show NSFW: " + Master.client_nsfw.ToString().ToLower());
+                    Log.Message("Country: " + Master.client_country);
 
                     // Callback to game to let it know user info has been saved
                     Master.callback.Invoke("ArmaSpotifyController","setVariable","[\"missionnamespace\", \"aasp_info_saved\", true, false]");
                 }
                 else
                 {
-                    if (response.StatusCode != (HttpStatusCode)429)
-                    {
-                        Log.Error("ERROR: " + response.StatusCode.ToString());
-                        Master.get_async_response = "ERROR: " + response.StatusCode.ToString();
-                    }
-                    else
-                    {
-                        Log.Error("ERROR: Rate limited");
-                        Master.get_async_response = "ERROR: Rate limited";
-                    }
+                    Log.Message("'GetUserInfo' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+
+                    Master.get_async_response = "";
                 }
             }
             catch (Exception e)
             {
-                Log.Error(e.Message);
+                Log.Message(e.Message);
             }
         }
+
+        internal async static Task GetUserDevices(string variable_name)
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+                var response = await Master.client.GetAsync("https://api.spotify.com/v1/me/player/devices");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    // Save response to variable for later use
+                    string data = await response.Content.ReadAsStringAsync();
+
+                    // Find list of devices index
+                    int array_start = data.IndexOf("[") + 1;
+                    int array_end = data.LastIndexOf("]");
+
+                    // Get string ready for reading
+                    string result = data.Substring(array_start, array_end - array_start).Replace('{', '\0').Replace('}', '|').Replace("\n", "").Replace("\r", "");
+
+                    List<string> devices_list = new List<string>(); 
+
+                    string[] device_list = result.Trim().Split('|');
+                    foreach (string items in device_list)
+                    {
+                        if (items.Length <= 0)
+                            continue;
+
+                        if (items[0] == ',')
+                            items.Remove(0, 1);
+
+                        List<string> output_list = new List<string>();
+                        foreach (string item_string in items.Trim().Split(','))
+                        {
+                            string[] attributes = item_string.Trim().Split(':');
+                            if (attributes.Length == 2)
+                            {
+                                // Append to output list
+                                output_list.Add(attributes[1].Trim().Replace("\"", "'"));
+                            }
+                        }
+
+                        // Append to device list
+                        devices_list.Add("[" + string.Join(",", output_list) + "]");
+                    }
+
+                    // Callback to game to add items to listbox
+                    string callback_data = "['display',['"+ variable_name + "', [" + string.Join(",", devices_list) + "]]]";
+                    Master.callback.Invoke("ArmaSpotifyController", "spotify_fnc_get_devices", callback_data.Replace("\"\"","'"));
+                    Log.Message(callback_data.Replace("\"\"", "'"));
+                }
+                else
+                {
+                    Log.Message("'GetUserDevices' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message(e.Message);
+            }
+        }
+
+        internal async static Task SetUserDevice(string device_id)
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                var content = new StringContent("{\"device_ids\" : [\"" + device_id + "\"], \"play\" : true}");
+
+                var response = await Master.client.PutAsync("https://api.spotify.com/v1/me/player", content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Log.Message("Transfered audio playback to " + device_id);
+                }
+                else
+                {
+                    Log.Message("'SetUserDevice' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message(e.Message);
+            }
+        }
+
+        internal async static Task SetUserVolume(int volume_level)
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                var response = await Master.client.PutAsync("https://api.spotify.com/v1/me/player/volume?volume_percent=" + volume_level, new StringContent(""));
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Log.Message("Set users volume to " + volume_level);
+                }
+                else
+                {
+                    Log.Message("'SetUserVolume' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message(e.Message);
+            }
+        }
+
+        internal async static Task PausePlayback()
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                var response = await Master.client.PutAsync("https://api.spotify.com/v1/me/player/pause", new StringContent(""));
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Log.Message("Paused audio playback");
+                }
+                else
+                {
+                    Log.Message("'PausePlayback' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message(e.Message);
+            }
+        }
+
+        internal async static Task ResumePlayback()
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                var response = await Master.client.PutAsync("https://api.spotify.com/v1/me/player/play", new StringContent(""));
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Log.Message("Resumed audio playback");
+                }
+                else
+                {
+                    Log.Message("'PausePlayback' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message(e.Message);
+            }
+        }
+
+        internal async static Task SkipNext()
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                var response = await Master.client.PostAsync("https://api.spotify.com/v1/me/player/next", new StringContent(""));
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Log.Message("Skipped to next track in playlist");
+                }
+                else
+                {
+                    Log.Message("'PausePlayback' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message(e.Message);
+            }
+        }
+
+        internal async static Task SkipBack()
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                var response = await Master.client.PostAsync("https://api.spotify.com/v1/me/player/previous", new StringContent(""));
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Log.Message("Skipped to the prevoius track in playlist");
+                }
+                else
+                {
+                    Log.Message("'PausePlayback' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message(e.Message);
+            }
+        }
+
+        internal async static Task LoadDisplay()
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                var response = await Master.client.GetAsync("https://api.spotify.com/v1/me/player");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    String data = (await response.Content.ReadAsStringAsync())
+                        .Replace('\n', '\0').Replace('\r', '\0');
+
+                    Log.Message(data);
+                    if (data.Length > 0)
+                    {
+                        // Playing + NSFW
+                        bool playing = data.Contains("\"is_playing\" : true");
+                        bool nsfw = data.Contains("\"explicit\" : true");
+
+                        // Song duration
+                        int pFrom_duration = data.IndexOf("duration_ms") + 15;
+                        int pTo_duration = data.IndexOf("explicit") - 3;
+                        int length = int.Parse(data.Substring(pFrom_duration, pTo_duration - pFrom_duration).Replace('\u0020', '\0').Replace(',', '\0'));
+
+                        // Song progress
+                        int pFrom_progress = data.IndexOf("progress_ms") + 15;
+                        int pTo_progress = data.IndexOf("item") - 3;
+                        int progress = int.Parse(data.Substring(pFrom_progress, pTo_progress - pFrom_progress).Replace('\u0020', '\0').Replace(',', '\0'));
+
+                        // Song name
+                        int pFrom_name = data.LastIndexOf("\"name\"") + 10;
+                        int pTo_name = data.LastIndexOf("\"popularity\"") - 7;
+                        string name_song = data.Substring(pFrom_name, pTo_name - pFrom_name);
+
+                        // Artists names
+                        int pFrom_artist = data.LastIndexOf("\"artists\" : [ ") + 14;
+                        int pTo_artist = data.LastIndexOf("} ],") + 1;
+                        
+                        string artists_string = data.Substring(pFrom_artist, pTo_artist - pFrom_artist);
+                        while (artists_string.Contains("external_urls"))
+                        {
+                            int start = artists_string.IndexOf("\"external_urls\"");
+                            int end = artists_string.IndexOf("\"href\"", start);
+                            artists_string = artists_string.Remove(start, end - start);
+                        }
+
+                        List<string> artists_list = new List<string>();
+                        string[] artists = artists_string.Split(',');
+                        foreach (string i in artists)
+                        {
+                            string[] attributes = i.Split(':');
+                            if (attributes[0].Contains('{'))
+                                attributes[0] = attributes[0].Remove(attributes[0].IndexOf("{"), 1);
+
+                            if (attributes[0].Contains("name"))
+                            {
+                                artists_list.Add(attributes[1].Trim().Replace("\"", ""));
+                                Log.Message("********");
+                                Log.Message(">" + attributes[1].Trim().Replace("\"", "") + "<");
+                                Log.Message("^^^^^^^");
+                            }
+                        }
+                        string name_artist = string.Join(", ", artists_list);
+
+                        // Image URI
+                        int pFrom_image = data.LastIndexOf("height\" : 64") + 31;
+                        int pTo_image = data.LastIndexOf("width\" : 64") - 12;
+                        string image = data.Substring(pFrom_image, pTo_image - pFrom_image).Replace('\u0020', '\0').Replace(',', '\0').Remove(0, 18);
+
+                        Log.Message(string.Format("[{0},{1},{2},{3},\"{4}\",\"{5}\",\"{6}\"]", playing, nsfw, length, progress, name_song, name_artist, image));
+                        Master.callback.Invoke("ArmaSpotifyController", "spotify_fnc_update_display", string.Format("[{0},{1},{2},{3},\"{4}\",\"{5}\",\"{6}\"]", playing, nsfw, length, progress, name_song, name_artist, image));
+                    }
+                    else
+                    {
+                        Log.Message("'LoadDisplay' No devices found currently playing");
+                    }
+                }
+                else
+                {
+                    Log.Message("'LoadDisplay' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message(e.Message);
+            }
+        }
+
     }
 
     public class Master
@@ -362,11 +768,17 @@ namespace ArmaSpotifyController
             // Reduce output by 1 to avoid accidental overflow
             outputSize--;
 
-            // Log setup called
-            Log.Error("DLL setup running");
-
             // Setup log file and stuff for error logging
             Log.Setup();
+
+            // Log setup called
+            Log.Message("DLL setup running");
+
+            // Setup image saving
+            Image.Setup();
+
+            // Save image directory to variable - includes backslash so be aware of that!
+            callback.Invoke("ArmaSpotifyController", "setVariable", "[\"missionnamespace\", \"aasp_image_location\", \""+ Image.image_directory + @"\" +"\", false]");
 
             // Generate a new state key
             RNGCryptoServiceProvider generator = new RNGCryptoServiceProvider();
@@ -374,7 +786,7 @@ namespace ArmaSpotifyController
             // Buffer storage.
             byte[] data = new byte[4];
 
-            // Fill buffer.
+            // Fill buffer
             generator.GetBytes(data);
 
             // Convert to int 32
@@ -405,19 +817,70 @@ namespace ArmaSpotifyController
                 {
                     switch (parameters[1].ToLower())
                     {
-                        // PREMIUM: Returns if the user who has authorised has an active Spotify Premium subscription
-                        case "premium":
-                            output.Append(client_premium.ToString());
+                        // GET_DEVICES: Request list of users devices
+                        case "get_devices":
+                            Task ignore = Request.GetUserDevices(parameters[2]);
+                            output.Append("true");
+                            break;
+
+                        // SET_DEVICE: Transfer audio playback to requested device
+                        case "set_device":
+                            Task ignore_1 = Request.SetUserDevice(parameters[2]);
+                            output.Append("true");
+                            break;
+
+                        // SET_VOLUME: Sets users volume for the current active device
+                        case "set_volume":
+                            Task ignore_2 = Request.SetUserVolume(int.Parse(parameters[2]));
+                            output.Append("true");
+                            break;
+
+                        // SKIP: Skips forward/backwards to the next item in playlist
+                        case "skip":
+                            if (parameters[2] == "next")
+                            {
+                                Task ignore_3 = Request.SkipNext();
+                            }
+                            else
+                            {
+                                Task ignore_4 = Request.SkipBack();
+                            }                            
+                            output.Append("true");
                             break;
 
                         // PLAY: Starts/resumes users playback of the current song/defined song
                         case "play":
-                            output.Append("play");
+                            Task ignore_5 = Request.ResumePlayback();
+                            output.Append("true");
+                            break;
+                        
+                        // LOAD_DISPLAY: Gathers data on current playback and then sends data back to game to setup display
+                        case "load_display":
+                            Task ignore_6 = Request.LoadDisplay();
+                            output.Append("true");
                             break;
 
                         // PAUSE: Pauses users playback of the current song
                         case "pause":
-                            output.Append("pause");
+                            Task ignore_7 = Request.PausePlayback();
+                            output.Append("true");
+                            break;
+
+                        // CONNECT_WEBSITE: Open the Spotify Connect website
+                        case "connect_website":
+                            Process.Start("https://www.spotify.com/connect/");
+                            output.Append("true");
+                            break;
+
+                        // DOWNLOAD_IMAGE: Downloads image from spotify server and then sets it to a control
+                        case "download_image":
+                            Task ignore_8 = Image.DownloadImage(@"https://i.scdn.co/" + parameters[2], parameters[3]);
+                            output.Append("true");
+                            break;
+
+                        // PREMIUM: Returns if the user who has authorised has an active Spotify Premium subscription
+                        case "premium":
+                            output.Append(client_premium.ToString().ToLower());
                             break;
 
                         // DEFAULT: Show version information
@@ -442,6 +905,8 @@ namespace ArmaSpotifyController
                         {
                             String user_code = parameters[1];
                             String user_state = parameters[2];
+
+                            client.DefaultRequestHeaders.Clear();
 
                             // Make sure state is correct, else reject authorization
                             if (user_state == state.ToString())
@@ -479,32 +944,42 @@ namespace ArmaSpotifyController
                                     client_access_token = result_access;
                                     client_refresh_token = result_refresh;
 
+                                    // Delete old token file
+                                    Log.DeleteToken();
+
+                                    // Save new refresh token
+                                    Log.SaveToken();
+
                                     // Start the refresh timer
                                     Refresh.RefreshTokenLoop();
 
+                                    // Start gathering user info for display
+                                    Player.PlayerLoop();
+
                                     // Callback to game to let it know user is authorised
-                                    Master.callback.Invoke("ArmaSpotifyController", "setVariable", "[\"missionnamespace\", \"aasp_authorised\", true, false]");
+                                    callback.Invoke("ArmaSpotifyController", "setVariable", "[\"missionnamespace\", \"aasp_authorised\", true, false]");
 
                                     // Save user info to client variables in DLL for later use
                                     Task ignore = Request.GetUserInfo();
 
-                                    Log.Error("User authentication success");
+                                    Log.Message("User authentication success");
                                     output.Append("User authentication success");
                                     break;
                                 }
                                 else
                                 {
+                                    Log.Message("Error: " + response.StatusCode.ToString());
+                                    Log.Message(response.ReasonPhrase);
+
                                     // Check if we are being rate limited
                                     if (response.StatusCode == (HttpStatusCode)429)
                                     {
-                                        Log.Error("[" + function + "]" + "ERROR: Request was rate limited, try again in a few seconds.");
                                         output.Append("ERROR: Request was rate limited, try again in a few seconds.");
                                         break;
                                     }
                                     else
                                     {
-                                        Log.Error("[" + function + "]" + "ERROR: Post request returned error status code (" + response.StatusCode.ToString() + ")");
-                                        output.Append("ERROR: Post request returned error status code (" + response.StatusCode.ToString() + ")");
+                                        output.Append("ERROR: Post request returned error");
                                         break;
                                     }
                                 }
@@ -512,7 +987,7 @@ namespace ArmaSpotifyController
                             else
                             {
                                 // Missing state key
-                                Log.Error("ERROR: Incorrect 'state' key. Reauthorization required!");
+                                Log.Message("ERROR: Incorrect 'state' key. Reauthorization required!");
                                 output.Append("ERROR: Incorrect 'state' key. Reauthorization required!");
                                 break;
                             }
@@ -520,7 +995,7 @@ namespace ArmaSpotifyController
                         else
                         {
                             // Incorrect input
-                            Log.Error("ERROR: Missing 'key' and 'state' parameter for authorisiation.");
+                            Log.Message("ERROR: Missing 'key' and 'state' parameter for authorisiation.");
                             output.Append("ERROR: Missing 'key' and 'state' parameter for authorisiation.");
                             break;
                         };
@@ -566,7 +1041,7 @@ namespace ArmaSpotifyController
                         };
 
                         // DO NOT ALLOW USER TO CUSTOMIZE THIS.
-                        System.Diagnostics.Process.Start(string.Format("https://accounts.spotify.com/authorize?{0}", string.Join("&", parameters_dict.Select(kvp => string.Format("{0}={1}", kvp.Key, kvp.Value)))));
+                        Process.Start(string.Format("https://accounts.spotify.com/authorize?{0}", string.Join("&", parameters_dict.Select(kvp => string.Format("{0}={1}", kvp.Key, kvp.Value)))));
                         break;
                     
                     // AUTHORISED: Check if the user is already authorised
@@ -582,12 +1057,12 @@ namespace ArmaSpotifyController
 
                     // PREMIUM_WEBSITE: Open Spotify Premium webpage, redirects to local version
                     case "premium_website":
-                        System.Diagnostics.Process.Start("https://www.spotify.com/premium/");
+                        Process.Start("https://www.spotify.com/premium/");
                         break;
 
                     // ERROR: Log error to log file for debuging help later
                     case "error":
-                        Log.Error(parameters[1]);
+                        Log.Message(parameters[1]);
                         output.Append("true");
                         break;
 
@@ -596,9 +1071,9 @@ namespace ArmaSpotifyController
                         output.Append(Log.log_directory);
                         break;
                         
-                    // TOKEN: Show where tokens are being saved to
-                    case "token":                        
-                        output.Append(Log.token_directory);
+                    // DATA: Show where images are being saved to
+                    case "data":
+                        output.Append(Image.image_directory);
                         break;
 
                     // DEFAULT: Show version information

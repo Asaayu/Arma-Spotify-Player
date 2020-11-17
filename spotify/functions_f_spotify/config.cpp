@@ -17,19 +17,30 @@ class CfgFunctions
 	class functions_f_spotify
 	{
 		tag = "spotify";
-		class spotify_setup_functions
+		class spotify_main_functions
 		{
 		        file = "\spotify\functions_f_spotify\functions";
 			class preinit
 			{
 				preInit = 1;
 			};
-			class setup_onload {};
+		};
+		class spotify_api_functions
+		{
+		        file = "\spotify\functions_f_spotify\functions\spotify";
+			class get_devices {};
+			class play_button {};
+			class skip_button {};
+			class set_playback {};
+			class update_display {};
+			class volume {};
+		};
+		class spotify_gui_functions
+		{
+		        file = "\spotify\functions_f_spotify\functions\gui";
+			class mouse_over {};
 			class menu_onload {};
-			class verify_extension {};
-			class authenticate_display {};
-			class authenticate_action {};
-
+			class setup_onload {};
 		};
 	};
 };

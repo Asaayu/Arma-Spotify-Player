@@ -13,14 +13,26 @@ addMissionEventHandler ["ExtensionCallback",
 	{
 		case ("setvariable"):
 		{
-			systemChat _data;
 			private _array_data = parseSimpleArray _data;
 			_array_data params ["_namespace","_variable","_value","_global"];
 			(call compile _namespace) setVariable [_variable, _value, _global];
 		};
+		case ("ctrlsettext"):
+		{
+			private _data = _data splitString "|";
+			(uiNamespace getVariable [_data#1, controlNull]) ctrlSetText (_data#0);
+		};
+		case ("spotify_fnc_get_devices"):
+		{
+			(parseSimpleArray _data) call spotify_fnc_get_devices;
+		};
+		case ("spotify_fnc_update_display"):
+		{
+			(parseSimpleArray _data) call spotify_fnc_update_display;
+		};
 		default
 		{
-			"ArmaSpotifyController" callExtension format["error:ExtensionCallback EVH ran into undefined function (%1)",__function];
+			"ArmaSpotifyController" callExtension format["error:ExtensionCallback EVH ran into undefined function (%1)",_function];
 		};
 	};
 }];
