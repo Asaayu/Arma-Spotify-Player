@@ -144,7 +144,7 @@ switch (toLower _mode) do
 			// Request new playback device to Spotify Web API
 			"ArmaSpotifyController" callExtension format["spotify:set_device:%1",_data#0];
 
-			[ctrlParent _ctrl, _data#1, false] call spotify_fnc_volume;
+			[_data#1, false] call spotify_fnc_volume;
 		}
 		else
 		{

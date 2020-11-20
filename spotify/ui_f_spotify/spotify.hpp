@@ -1,29 +1,42 @@
+#define SW safezoneW
+#define SH safezoneH
+#define SX safezoneX
+#define SY safezoneY
+
+#define HI(VALUE) (VALUE * 1.75 * SH)
+
+#define W(VALUE) (VALUE * SW)
+#define H(VALUE) (VALUE * SH)
+#define X(VALUE) (SX + VALUE * SW)
+#define Y(VALUE) (SY + VALUE * SH)
+
 class AASP_spotify
 {
 	idd = 57445;
 	enablesimulation = 1;
 	enabledisplay = 1;
 	onLoad = "uinamespace setVariable ['aasp_spotify_display', _this#0]; _this spawn spotify_fnc_menu_onload;";
+	onUnload = "uinamespace setVariable ['aasp_spotify_display', displayNull];";
 	class controlsbackground
 	{
 		class background_main: ctrlStaticBackground
 		{
-			x = "((getResolution select 2) * 0.5 * pixelW) - 100 * (pixelW * pixelGridNoUIScale * 0.50)";
-			y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + 10 * (pixelH * pixelGridNoUIScale * 0.50)";
-			w = "200 * (pixelW * pixelGridNoUIScale * 0.50)";
-			h = "115 * (pixelH * pixelGridNoUIScale * 0.50)";
+			x = X(0.1);
+			y = Y(0.1);
+			w = W(0.8);
+			h = H(0.8);
 			colorBackground[] = {0.14,0.14,0.14,1};
 		};
 		class background_second: background_main {};
                 class background_left: background_main
 		{
-                        w = "(200/8) * (pixelW * pixelGridNoUIScale * 0.50)";
+                        w = W(0.8/8);
                         colorBackground[] = {0.1,0.1,0.1,1};
                 };
                 class background_bottom: background_main
 		{
-                        y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + 113.5 * (pixelH * pixelGridNoUIScale * 0.50)";
-                        h = "(115/10) * (pixelH * pixelGridNoUIScale *  0.50)";
+                        y = Y(0.9) - H(0.8/10);
+                        h = H(0.8/10);
                         colorBackground[] = {0.17,0.17,0.17,1};
                 };
 	};
@@ -33,37 +46,32 @@ class AASP_spotify
                 {
 			idc = 2;
 			text = "A3\Ui_f\data\GUI\Rsc\RscDisplayArcadeMap\icon_exit_cross_ca.paa";
-			x = "((getResolution select 2) * 0.5 * pixelW) + 97 * (pixelW * pixelGridNoUIScale * 0.50)";
-			y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + 10 * (pixelH * pixelGridNoUIScale * 0.50)";
-			w = "3 * (pixelW * pixelGridNoUIScale * 0.50)";
-			h = "3 * (pixelH * pixelGridNoUIScale * 0.50)";
+			x = X(0.9) - W(0.0125);
+			y = Y(0.1);
+			w = W(0.0125);
+			h = HI(0.0125);
 			tooltip = "Close";
                         color[] = {1,1,1,0.15};
                         colorActive[] = {1,1,1,1};
 		};
+                class settings_button: ctrlActivePicture
+                {
+			idc = 50;
+			text = "\spotify\ui_f_spotify\data\icons\gear_ca.paa";
+			x = X(0.9) - W(0.0125*2);
+			tooltip = "Settings";
+		};
 
 		// Bottom Box Buttons
-                class play_button_background: ctrlStaticPicture
-                {
-			idc = 1005;
-			text = "\spotify\ui_f_spotify\data\icons\circle_ca.paa";
-			x = "((getResolution select 2) * 0.5 * pixelW) - 2 * (pixelW * pixelGridNoUIScale * 0.50)";
-			y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + (113.5 + 2) * (pixelH * pixelGridNoUIScale * 0.50)";
-			w = "4 * (pixelW * pixelGridNoUIScale * 0.50)";
-			h = "4 * (pixelH * pixelGridNoUIScale * 0.50)";
-			colorText[] = {1,1,1,0.7};
-		};
                 class play_button: ctrlActivePicture
                 {
 			idc = 1000;
 			text = "\spotify\ui_f_spotify\data\icons\play_ca.paa";
-			x = "((getResolution select 2) * 0.5 * pixelW) - 1.5 * (pixelW * pixelGridNoUIScale * 0.50)";
-			y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + 116 * (pixelH * pixelGridNoUIScale * 0.50)";
-			w = "3 * (pixelW * pixelGridNoUIScale * 0.50)";
-			h = "3 * (pixelH * pixelGridNoUIScale * 0.50)";
-			onMouseEnter = "[_this#0, true] call spotify_fnc_mouse_over";
-			onMouseExit = "[_this#0, false] call spotify_fnc_mouse_over";
-			onButtonClick = "_this call spotify_fnc_play_button";
+			x = X(0.5) - W(0.0175/2);
+			y = Y(0.832);
+			w = W(0.0175);
+			h = HI(0.0175);
+			onButtonClick = "_this call spotify_fnc_play";
 			color[] = {1,1,1,0.7};
 			colorActive[] = {1,1,1,1};
 			tooltip = "Play Button";
@@ -72,56 +80,68 @@ class AASP_spotify
                 {
 			idc = 1010;
 			text = "\spotify\ui_f_spotify\data\icons\skip_start_ca.paa";
-			x = "((getResolution select 2) * 0.5 * pixelW) - (1.5 + 4 + 1.5) * (pixelW * pixelGridNoUIScale * 0.50)";
+			x = X(0.5) - W(0.02) - W(0.0125);
+			y = Y(0.8375);
+			w = W(0.0125);
+			h = HI(0.0125);
 			tooltip = "Previous";
-			onButtonClick = "[_this#0, -1] call spotify_fnc_skip_button;";
+			onButtonClick = "[_this#0, -1] call spotify_fnc_skip;";
 		};
                 class skip_end_button: skip_start_button
                 {
 			idc = 1015;
 			text = "\spotify\ui_f_spotify\data\icons\skip_end_ca.paa";
-			x = "((getResolution select 2) * 0.5 * pixelW) - (1.5 - 4 - 1.5) * (pixelW * pixelGridNoUIScale * 0.50)";
+			x = X(0.5) + W(0.02);
 			tooltip = "Next";
-			onButtonClick = "[_this#0, 1] call spotify_fnc_skip_button;";
+			onButtonClick = "[_this#0, 1] call spotify_fnc_skip;";
 		};
                 class shuffle_button: skip_start_button
                 {
 			idc = 1020;
 			text = "\spotify\ui_f_spotify\data\icons\shuffle_ca.paa";
-			x = "((getResolution select 2) * 0.5 * pixelW) - (1.5 + 10 + 1.5) * (pixelW * pixelGridNoUIScale * 0.50)";
+			x = X(0.5) - W(0.04) - W(0.0125);
+			onButtonClick = "[!(missionNamespace getVariable ['aasp_shuffle_mode',false]), true] call spotify_fnc_set_shuffle;";
 			tooltip = "Shuffle";
+		};
+		class shuffle_dot: shuffle_button
+                {
+			idc = 1021;
+			show = 0;
+			text = "\spotify\ui_f_spotify\data\icons\dot_ca.paa";
+			y = Y(0.8375) + HI(0.01);
+			color[] = {1,1,1,0.7};
+			colorActive[] = {1,1,1,0.7};
+			onButtonClick = "";
+			tooltip = "";
 		};
                 class repeat_button: skip_start_button
                 {
 			idc = 1025;
 			text = "\spotify\ui_f_spotify\data\icons\repeat_ca.paa";
-			x = "((getResolution select 2) * 0.5 * pixelW) - (1.5 - 10 - 1.5) * (pixelW * pixelGridNoUIScale * 0.50)";
+			x = X(0.5) + W(0.04);
+			onButtonClick = "['',true,true] call spotify_fnc_set_repeat;";
 			tooltip = "Repeat";
 		};
-		class shuffle_dot: play_button_background
-                {
-			idc = 1021;
-			text = "\spotify\ui_f_spotify\data\icons\dot_ca.paa";
-			x = "((getResolution select 2) * 0.5 * pixelW) - (1.5 + 10 + 1.5) * (pixelW * pixelGridNoUIScale * 0.50)";
-			y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + 119 * (pixelH * pixelGridNoUIScale * 0.50)";
-			w = "3 * (pixelW * pixelGridNoUIScale * 0.50)";
-			h = "3 * (pixelH * pixelGridNoUIScale * 0.50)";
-		};
-		class repeat_dot: shuffle_dot
+		class repeat_dot: repeat_button
                 {
 			idc = 1026;
+			show = 0;
 			text = "\spotify\ui_f_spotify\data\icons\dot_ca.paa";
-			x = "((getResolution select 2) * 0.5 * pixelW) - (1.5 - 10 - 1.5) * (pixelW * pixelGridNoUIScale * 0.50)";
+			y = Y(0.8375) + HI(0.01);
+			color[] = {1,1,1,0.7};
+			colorActive[] = {1,1,1,0.7};
+			tooltip = "";
+			onButtonClick = "";
 		};
 
 		// Bottom Box slider
 		class playback_slider: ctrlXSliderH
                 {
 			idc = 1100;
-			x = "((getResolution select 2) * 0.5 * pixelW) - 50 * (pixelW * pixelGridNoUIScale * 0.50)";
-			y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + 122 * (pixelH * pixelGridNoUIScale * 0.50)";
-			w = "100 * (pixelW * pixelGridNoUIScale * 0.50)";
-			h = "0.66 * (pixelH * pixelGridNoUIScale * 0.50)";
+			x = X(0.5) - W(0.2);
+			y = Y(0.88);
+			w = W(0.40);
+			h = H(0.005);
 			color[] = {1,1,1,1};
             		coloractive[] = {1,1,1,1};
 
@@ -132,6 +152,7 @@ class AASP_spotify
             		thumb = "\spotify\ui_f_spotify\data\ui\slider_foreground_ca.paa";
 			lineSize = 0;
 			sliderRange[] = {0, 1};
+			onSliderPosChanged = "[_this#1, true] call spotify_fnc_seek;";
 			sliderPosition = 0;
 		};
 
@@ -140,11 +161,11 @@ class AASP_spotify
 			idc = 1210;
 			style = 1;
 			text = "0:00";
-			x = "((getResolution select 2) * 0.5 * pixelW) - 59 * (pixelW * pixelGridNoUIScale * 0.50)";
-			y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + 121 * (pixelH * pixelGridNoUIScale * 0.50)";
-			w = "10 * (pixelW * pixelGridNoUIScale * 0.50)";
-			h = "2 * (pixelH * pixelGridNoUIScale * 0.50)";
-			sizeEx = "2 * (pixelH * pixelGridNoUIScale *  0.50)";
+			x = X(0.5) - W(0.2) - W(0.035);
+			y = Y(0.87);
+			w = W(0.04);
+			h = H(0.02);
+			sizeEx = H(0.02);
 			font = "RobotoCondensed";
 			colorText[] = {1,1,1,0.7};
 		};
@@ -153,55 +174,79 @@ class AASP_spotify
 			idc = 1215;
 			style = 0;
 			text = "-0:00";
-			x = "((getResolution select 2) * 0.5 * pixelW) + 49 * (pixelW * pixelGridNoUIScale * 0.50)";
+			x = X(0.5) + W(0.195);
 		};
 
 		// Left hand stuff
 		class song_icon: ctrlStaticPicture
                 {
 			idc = 1500;
-			text = "\spotify\ui_f_spotify\data\placeholder\512x_placeholder_co.paa";
-			x = "((getResolution select 2) * 0.5 * pixelW) - 98.5 * (pixelW * pixelGridNoUIScale * 0.50)";
-			y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + 114.75 * (pixelH * pixelGridNoUIScale * 0.50)";
-			w = "9 * (pixelW * pixelGridNoUIScale * 0.50)";
-			h = "9 * (pixelH * pixelGridNoUIScale * 0.50)";
-			color[] = {1,1,1,0.7};
+			text = "";
+			x = X(0.1) + W(0.005);
+			y = Y(0.82) + H(0.01);
+			w = W(0.035);
+			h = HI(0.035);
+			color[] = {1,0,0,0.7};
 			colorActive[] = {1,1,1,1};
 			tooltip = "Song Icon";
 		};
-		class song_title: ctrlStatic
-                {
+		class song_title_control_group: ctrlControlsGroupNoHScrollbars
+		{
 			idc = 1505;
-			text = "Song Title";
-			x = "((getResolution select 2) * 0.5 * pixelW) - 88.5 * (pixelW * pixelGridNoUIScale * 0.50)";
-			y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + 115.75 * (pixelH * pixelGridNoUIScale * 0.50)";
-			w = "27 * (pixelW * pixelGridNoUIScale * 0.50)";
-			h = "2.5 * (pixelH * pixelGridNoUIScale * 0.50)";
-			sizeEx = "2.1 * (pixelH * pixelGridNoUIScale *  0.50)";
-			font = "Spotify";
-			shadow= 0;
-			colorText[] = {1,1,1,1};
-			colorBackground[] = {1,0,0,0.4};
+			x = X(0.1) + W(0.0435);
+			y = Y(0.82) + H(0.02);
+			w = W(0.1025);
+			h = H(0.0185);
+			class controls
+			{
+				class song_title: ctrlActivePictureKeepAspect
+		                {
+					idc = 1000;
+					text = "";
+					x = 0;
+					y = 0;
+					w = W(0.1025);
+					h = H(0.01835);
+					onMouseEnter = "[_this#0, 0.1025 * safezoneW] spawn spotify_fnc_text_scroll;";
+					color[] = {1,1,1,1};
+					colorActive[] = {1,1,1,1};
+				};
+			};
 		};
-		class song_author: song_title
-                {
+		class song_author_control_group: song_title_control_group
+		{
 			idc = 1510;
-			text = "Song Author";
-			w = "30 * (pixelW * pixelGridNoUIScale * 0.50)";
-			y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + 119.75 * (pixelH * pixelGridNoUIScale * 0.50)";
-			sizeEx = "1.9 * (pixelH * pixelGridNoUIScale *  0.50)";
-			colorText[] = {0.7,0.7,0.7,1};
+			y = Y(0.82) + H(0.04);
+			w = W(0.12);
+			h = H(0.02);
+			class controls
+			{
+				class song_author: ctrlActivePictureKeepAspect
+		                {
+					idc = 1000;
+					text = "";
+					x = 0;
+					y = H(0.005);
+					w = W(0.12);
+					h = H(0.0135);
+					onMouseEnter = "[_this#0, 0.12 * safezoneW] spawn spotify_fnc_text_scroll;";
+					color[] = {1,1,1,1};
+					colorActive[] = {1,1,1,1};
+				};
+			};
 		};
 		class song_like: ctrlActivePicture
                 {
 			idc = 1515;
+			show = 0;
 			text = "\spotify\ui_f_spotify\data\icons\like_empty_ca.paa";
-			x = "((getResolution select 2) * 0.5 * pixelW) - (88.5 - 26.25 - 1) * (pixelW * pixelGridNoUIScale * 0.50)";
-			y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + 115.75 * (pixelH * pixelGridNoUIScale * 0.50)";
-			w = "2.5 * (pixelW * pixelGridNoUIScale * 0.50)";
-			h = "2.5 * (pixelH * pixelGridNoUIScale * 0.50)";
+			x = X(0.14) + W(0.11);
+			y = Y(0.8425);
+			w = W(0.01835/2);
+			h = HI(0.01835/2);
 			color[] = {1,1,1,0.7};
 			colorActive[] = {1,1,1,0.7};
+			onButtonClick = "[ctrlText (_this#0) find 'like_empty_ca.paa' > -1, true, (_this#0) getVariable ['aasp_song_id', '']] call spotify_fnc_like";
 			tooltip = "Like Button";
 		};
 
@@ -210,10 +255,10 @@ class AASP_spotify
                 {
 			idc = 1300;
 			text = "\spotify\ui_f_spotify\data\icons\playlist_ca.paa";
-			x = "((getResolution select 2) * 0.5 * pixelW) + 70 * (pixelW * pixelGridNoUIScale * 0.50)";
-			y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + 117.5 * (pixelH * pixelGridNoUIScale * 0.50)";
-			w = "3 * (pixelW * pixelGridNoUIScale * 0.50)";
-			h = "3 * (pixelH * pixelGridNoUIScale * 0.50)";
+			x = X(0.775);
+			y = Y(0.86) - HI(0.015/2);
+			w = W(0.015);
+			h = HI(0.015);
 			color[] = {1,1,1,0.7};
 			colorActive[] = {1,1,1,1};
 			tooltip = "Playlist Button";
@@ -222,28 +267,41 @@ class AASP_spotify
                 {
 			idc = 1305;
 			text = "\spotify\ui_f_spotify\data\icons\devices_ca.paa";
-			x = "((getResolution select 2) * 0.5 * pixelW) + 76 * (pixelW * pixelGridNoUIScale * 0.50)";
+			x = X(0.775) + W(0.02625);
 			tooltip = "Devices Button";
 			onButtonClick = "private _display = ctrlParent (_this#0); ['button', [_display, _display displayCtrl 50000]] call spotify_fnc_get_devices;";
+		};
+		class no_device_text: ctrlStatic
+                {
+			idc = 1306;
+			style = 2;
+			show = 0;
+			text = "Click the devices button at the bottom right to select a device to connect to.";
+			x = X(0.5) - W(0.3);
+			y = Y(0.83) - H(0.045);
+			w = W(0.6);
+			h = H(0.03);
+			font = "RobotoCondensedBold";
+			sizeEx = H(0.03);
 		};
 		class volume_button: playlist_button
                 {
 			idc = 1310;
 			text = "\spotify\ui_f_spotify\data\icons\volume_high_ca.paa";
-			x = "((getResolution select 2) * 0.5 * pixelW) + 82 * (pixelW * pixelGridNoUIScale * 0.50)";
+			x = X(0.775) + W(0.0525);
 			tooltip = "Volume Button";
-			onButtonClick = "private _volume = missionNamespace getVariable ['aasp_volume_variable', 100]; if (_volume > 0) then { [ctrlParent (_this#0), 0, true, true] call spotify_fnc_volume; } else { [ctrlParent (_this#0), missionNamespace getVariable ['aasp_volume_last', 100], true, true] call spotify_fnc_volume; }";
+			onButtonClick = "private _volume = missionNamespace getVariable ['aasp_volume_variable', 100]; if (_volume > 0) then { [0, true, true] call spotify_fnc_volume; } else { [missionNamespace getVariable ['aasp_volume_last', 100], true, true] call spotify_fnc_volume; }";
 		};
 		class volume_slider: playback_slider
                 {
 			idc = 1315;
-			x = "((getResolution select 2) * 0.5 * pixelW) + 85 * (pixelW * pixelGridNoUIScale * 0.50)";
-			y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + 118.75 * (pixelH * pixelGridNoUIScale * 0.50)";
-			w = "12.5 * (pixelW * pixelGridNoUIScale * 0.50)";
-			h = "0.66 * (pixelH * pixelGridNoUIScale * 0.50)";
+			x = X(0.8275) + W(0.014);
+			y = Y(0.86) - H(0.00125);
+			w = W(0.055);
+			h = W(0.0035);
 			color[] = {1,1,1,1};
             		coloractive[] = {1,1,1,1};
-			onSliderPosChanged = "[ctrlParent (_this#0), _this#1, true] call spotify_fnc_volume;";
+			onSliderPosChanged = "[_this#1, true] call spotify_fnc_volume;";
 			sliderRange[] = {0, 100};
 			sliderPosition = 100;
 		};
@@ -253,10 +311,10 @@ class AASP_spotify
 		{
 			idc = 50000;
 			show = 0;
-			x = "((getResolution select 2) * 0.5 * pixelW) + (76 - 15) * (pixelW * pixelGridNoUIScale * 0.50)";
-			y = "0.5 - (safezoneH min (160 * (pixelH * pixelGridNoUIScale * 0.50))) * 0.5 + (117 - 40) * (pixelH * pixelGridNoUIScale * 0.50)";
-			w = "30 * (pixelW * pixelGridNoUIScale * 0.50)";
-			h = "40 * (pixelH * pixelGridNoUIScale *  0.50)";
+			x = X(0.80875) - W(0.115/2);
+			y = Y(0.8675) - H(0.2275);
+			w = W(0.115);
+			h = H(0.2);
 			class controls
 			{
 				class devices_background: ctrlStaticBackground
@@ -264,8 +322,8 @@ class AASP_spotify
 					idc = 100;
 					x = 0;
 					y = 0;
-					w = "30 * (pixelW * pixelGridNoUIScale * 0.50)";
-					h = "40 * (pixelH * pixelGridNoUIScale * 0.50)";
+					w = W(0.115);
+					h = H(0.2);
 					colorBackground[] = {0.2,0.2,0.2,1};
 				};
 				class devices_title: ctrlStatic
@@ -275,34 +333,34 @@ class AASP_spotify
 					text = "Connect to a device";
 					x = 0;
 					y = 0;
-					w = "25.5 * (pixelW * pixelGridNoUIScale * 0.50)";
-					h = "6 * (pixelH * pixelGridNoUIScale * 0.50)";
-					sizeEx = "3 * (pixelH * pixelGridNoUIScale * 0.50)";
-					font = "Spotify";
+					w = W(0.115) - W(0.015);
+					h = H(0.275/10);
+					sizeEx = H(0.225/10);
+					color[] = {1,1,1,1};
+					shadow = 0;
+					font = "RobotoCondensed";
 				};
 				class connect_button: ctrlActivePicture
-		                {
-					idc = 106;
+				{
 					text = "\spotify\ui_f_spotify\data\icons\unknown_ca.paa";
-					x = "25.5 * (pixelW * pixelGridNoUIScale * 0.50)";
-					y = "1.5 * (pixelH * pixelGridNoUIScale * 0.50)";
-					w = "3 * (pixelW * pixelGridNoUIScale * 0.50)";
-					h = "3 * (pixelH * pixelGridNoUIScale * 0.50)";
+					x = W(0.115) - W(0.015);
+					y = 0;
+					w = W(0.015);
+					h = HI(0.015);
 					color[] = {1,1,1,0.7};
 					colorActive[] = {1,1,1,1};
-					tooltip = "Spotify Connect Button";
 					onButtonClick = "'ArmaSpotifyController' callExtension 'spotify:connect_website';";
 				};
 				class devices_list: ctrlListbox
 				{
 					idc = 110;
 					x = 0;
-					y = "6 * (pixelH * pixelGridNoUIScale * 0.50)";
-					w = "30 * (pixelW * pixelGridNoUIScale * 0.50)";
-					h = "34 * (pixelH * pixelGridNoUIScale * 0.50)";
+					y = H(0.275/10);
+					w = W(0.115);
+					h = H(0.199) - H(0.275/10);
 					shadow = 0;
-					rowHeight = "5 * (pixelH * pixelGridNoUIScale * 0.50)";
-					sizeEx = "3 * (pixelH * pixelGridNoUIScale * 0.50)";
+					rowHeight = H(0.225/6);
+					sizeEx = H(0.225/12);
 					onLBSelChanged = "['list', _this] call spotify_fnc_get_devices;";
 				};
 			};

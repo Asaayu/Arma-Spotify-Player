@@ -1,11 +1,12 @@
 params
 [
-	["_display", displayNull, [displayNull]],
 	["_value", 100, [100, ""]],
 	["_request", false, [false]],
 	["_instant", false, [false]]
 ];
+disableSerialization;
 
+private _display = uiNamespace getVariable ["aasp_spotify_display", displayNull];
 private _slider = _display displayCtrl 1315;
 private _button = _display displayCtrl 1310;
 
@@ -14,7 +15,10 @@ if (_value isEqualType "") then
 	_value = parseNumber _value;
 };
 
-systemchat str _value;
+// Slider eventhandlers are called on display killed
+// This fixes that issue
+if (isNil "aasp_volume") then { aasp_volume = 100; };
+if (_value == aasp_volume) exitWith {};
 
 switch true do
 {

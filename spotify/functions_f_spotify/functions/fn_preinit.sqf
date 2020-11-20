@@ -1,5 +1,3 @@
-// This function contains all the data that is run at the start of every mission
-
 "ArmaSpotifyController" callExtension "preinit";
 
 addMissionEventHandler ["ExtensionCallback",
@@ -22,6 +20,15 @@ addMissionEventHandler ["ExtensionCallback",
 			private _data = _data splitString "|";
 			(uiNamespace getVariable [_data#1, controlNull]) ctrlSetText (_data#0);
 		};
+		case ("spotify_fnc_update_like"):
+		{
+			(parseSimpleArray _data) params ["_result","_id"];
+			[_result, false, _id] call spotify_fnc_like;
+		};
+		case ("spotify_fnc_set_playback"):
+		{
+			(parseSimpleArray _data) call spotify_fnc_set_playback;
+		};
 		case ("spotify_fnc_get_devices"):
 		{
 			(parseSimpleArray _data) call spotify_fnc_get_devices;
@@ -30,9 +37,31 @@ addMissionEventHandler ["ExtensionCallback",
 		{
 			(parseSimpleArray _data) call spotify_fnc_update_display;
 		};
+		case ("spotify_fnc_update_song_info"):
+		{
+			(parseSimpleArray _data) call spotify_fnc_update_song_info;
+		};
+		case ("device_required"):
+		{
+			private _display = uinamespace getVariable ["aasp_spotify_display", displaynull];
+			private _no_device_ctrl = _display displayCtrl 1306;
+			_no_device_ctrl ctrlShow true;
+		};
 		default
 		{
 			"ArmaSpotifyController" callExtension format["error:ExtensionCallback EVH ran into undefined function (%1)",_function];
 		};
 	};
 }];
+
+[
+	"itemAdd",
+	[
+		"aasp_refresh_token_loop",
+		{
+			// Every X seconds send a request to refresh users token, will only send a request if enough time has passed since last token refresh
+			"ArmaSpotifyController" callExtension "spotify:refresh_token";
+		},
+		(5*60)
+	]
+] call BIS_fnc_loop;

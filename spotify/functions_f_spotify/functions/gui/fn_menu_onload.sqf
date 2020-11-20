@@ -2,6 +2,7 @@ params
 [
 	["_display",displayNull,[displayNull]]
 ];
+disableSerialization;
 
 #define LOADED (uinamespace getVariable ['aasp_spotify_preloaded', false])
 
@@ -49,5 +50,5 @@ if (("ArmaSpotifyController" callExtension "spotify:premium") != "true") exitWit
 	_master createDisplay "AASP_premium";
 };
 
-// Load currently playing track when the display is opened
-"ArmaSpotifyController" callExtension "spotify:load_display"
+// Force update info
+"ArmaSpotifyController" callExtension "spotify:request_info";
