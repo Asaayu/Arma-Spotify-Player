@@ -15,6 +15,8 @@ You can find a list of all the avaliable scopes [on the Spotify developer websit
 - [user-read-playback-position](https://developer.spotify.com/documentation/general/guides/scopes/#user-read-playback-position)
 - [user-read-private](https://developer.spotify.com/documentation/general/guides/scopes/#user-read-private)
 - [user-top-read](https://developer.spotify.com/documentation/general/guides/scopes/#user-top-read)
+- [user-library-modify](https://developer.spotify.com/documentation/general/guides/scopes/#user-library-modify)
+- [user-library-read](https://developer.spotify.com/documentation/general/guides/scopes/#user-library-read)
 
 ## Legal Information
 **Asaayu's Arma Spotify Player (AASP)** is not affiliated, created by, nor endorsed by Spotify, Spotify AB, and Spotify Technology S.A.
