@@ -39,6 +39,14 @@ class AASP_spotify
                         h = H(0.8/10);
                         colorBackground[] = {0.17,0.17,0.17,1};
                 };
+		class title_bar: ctrlStaticTitle
+		{
+			x = X(0.1);
+			y = Y(0.1);
+                        w = W(0.8);
+                        h = HI(0.0125);
+                        colorBackground[] = {0,0,0,0};
+                };
 	};
 	class controls
 	{
@@ -54,12 +62,13 @@ class AASP_spotify
                         color[] = {1,1,1,0.15};
                         colorActive[] = {1,1,1,1};
 		};
-                class settings_button: ctrlActivePicture
+                class settings_button: exit_button
                 {
 			idc = 50;
 			text = "\spotify\ui_f_spotify\data\icons\gear_ca.paa";
 			x = X(0.9) - W(0.0125*2);
 			tooltip = "Settings";
+			onButtonClick = "private _options_group = (ctrlParent (_this#0)) displayCtrl 55000; if (ctrlShown _options_group) then { _options_group ctrlShow false; } else { _options_group ctrlShow true; };";
 		};
 
 		// Bottom Box Buttons
@@ -154,6 +163,8 @@ class AASP_spotify
 			sliderRange[] = {0, 1};
 			onSliderPosChanged = "[_this#1, true] call spotify_fnc_seek;";
 			sliderPosition = 0;
+			onMouseButtonDown = "(_this#0) setVariable ['aasp_seeking', true];";
+			onMouseButtonUp = "(_this#0) setVariable ['aasp_seeking', false];";
 		};
 
 		class current_time: ctrlStatic
@@ -167,7 +178,9 @@ class AASP_spotify
 			h = H(0.02);
 			sizeEx = H(0.02);
 			font = "RobotoCondensed";
+			color[] = {1,1,1,0.7};
 			colorText[] = {1,1,1,0.7};
+			colorActive[] = {1,1,1,0.7};
 		};
 		class total_time: current_time
                 {
@@ -188,7 +201,6 @@ class AASP_spotify
 			h = HI(0.035);
 			color[] = {1,0,0,0.7};
 			colorActive[] = {1,1,1,1};
-			tooltip = "Song Icon";
 		};
 		class song_title_control_group: ctrlControlsGroupNoHScrollbars
 		{
@@ -216,7 +228,7 @@ class AASP_spotify
 		class song_author_control_group: song_title_control_group
 		{
 			idc = 1510;
-			y = Y(0.82) + H(0.04);
+			y = Y(0.82) + H(0.043);
 			w = W(0.12);
 			h = H(0.02);
 			class controls
@@ -271,19 +283,6 @@ class AASP_spotify
 			tooltip = "Devices Button";
 			onButtonClick = "private _display = ctrlParent (_this#0); ['button', [_display, _display displayCtrl 50000]] call spotify_fnc_get_devices;";
 		};
-		class no_device_text: ctrlStatic
-                {
-			idc = 1306;
-			style = 2;
-			show = 0;
-			text = "Click the devices button at the bottom right to select a device to connect to.";
-			x = X(0.5) - W(0.3);
-			y = Y(0.83) - H(0.045);
-			w = W(0.6);
-			h = H(0.03);
-			font = "RobotoCondensedBold";
-			sizeEx = H(0.03);
-		};
 		class volume_button: playlist_button
                 {
 			idc = 1310;
@@ -301,69 +300,34 @@ class AASP_spotify
 			h = W(0.0035);
 			color[] = {1,1,1,1};
             		coloractive[] = {1,1,1,1};
-			onSliderPosChanged = "[_this#1, true] call spotify_fnc_volume;";
+			onSliderPosChanged = "[_this#1, true, false, true] call spotify_fnc_volume;";
 			sliderRange[] = {0, 100};
 			sliderPosition = 100;
+			onMouseButtonDown = "(_this#0) setVariable ['aasp_seeking', true];";
+			onMouseButtonUp = "(_this#0) setVariable ['aasp_seeking', false];";
 		};
 
-		// Devices list
-		class devices_control_group: ctrlControlsGroupNoHScrollbars
-		{
-			idc = 50000;
+		// Options menu
+		//#include "windows\options.hpp"
+
+		class no_device_text: ctrlStatic
+                {
+			idc = 1306;
+			style = 2;
 			show = 0;
-			x = X(0.80875) - W(0.115/2);
-			y = Y(0.8675) - H(0.2275);
-			w = W(0.115);
-			h = H(0.2);
-			class controls
-			{
-				class devices_background: ctrlStaticBackground
-				{
-					idc = 100;
-					x = 0;
-					y = 0;
-					w = W(0.115);
-					h = H(0.2);
-					colorBackground[] = {0.2,0.2,0.2,1};
-				};
-				class devices_title: ctrlStatic
-				{
-					idc = 105;
-					style = 2;
-					text = "Connect to a device";
-					x = 0;
-					y = 0;
-					w = W(0.115) - W(0.015);
-					h = H(0.275/10);
-					sizeEx = H(0.225/10);
-					color[] = {1,1,1,1};
-					shadow = 0;
-					font = "RobotoCondensed";
-				};
-				class connect_button: ctrlActivePicture
-				{
-					text = "\spotify\ui_f_spotify\data\icons\unknown_ca.paa";
-					x = W(0.115) - W(0.015);
-					y = 0;
-					w = W(0.015);
-					h = HI(0.015);
-					color[] = {1,1,1,0.7};
-					colorActive[] = {1,1,1,1};
-					onButtonClick = "'ArmaSpotifyController' callExtension 'spotify:connect_website';";
-				};
-				class devices_list: ctrlListbox
-				{
-					idc = 110;
-					x = 0;
-					y = H(0.275/10);
-					w = W(0.115);
-					h = H(0.199) - H(0.275/10);
-					shadow = 0;
-					rowHeight = H(0.225/6);
-					sizeEx = H(0.225/12);
-					onLBSelChanged = "['list', _this] call spotify_fnc_get_devices;";
-				};
-			};
+			text = "Click the devices button at the bottom right to select a device to connect to.";
+			x = X(0.5) - W(0.3);
+			y = Y(0.83) - H(0.045);
+			w = W(0.6);
+			h = H(0.03);
+			font = "RobotoCondensedBold";
+			sizeEx = H(0.03);
 		};
+
+		// Options menu
+		#include "windows\options.hpp"
+
+		// Devices list
+		#include "windows\devices.hpp"
 	};
 };

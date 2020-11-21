@@ -20,6 +20,11 @@ _display displayAddEventHandler
 				["button", [_display, _display displayCtrl 50000, true]] call spotify_fnc_get_devices;
 				true
 			};
+			case (ctrlShown (_display displayCtrl 55000)):
+			{
+				(_display displayCtrl 55000) ctrlShow false;
+				true
+			};
 			default
 			{
 			    false

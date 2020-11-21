@@ -2,7 +2,8 @@ params
 [
 	["_value", 100, [100, ""]],
 	["_request", false, [false]],
-	["_instant", false, [false]]
+	["_instant", false, [false]],
+	["_seek", false, [false]]
 ];
 disableSerialization;
 
@@ -20,24 +21,29 @@ if (_value isEqualType "") then
 if (isNil "aasp_volume") then { aasp_volume = 100; };
 if (_value == aasp_volume) exitWith {};
 
-switch true do
-{
-	case (_value > 50):
-	{
-		_button ctrlSetText "\spotify\ui_f_spotify\data\icons\volume_high_ca.paa";
-	};
-	case (_value > 0):
-	{
-		_button ctrlSetText "\spotify\ui_f_spotify\data\icons\volume_low_ca.paa";
-	};
-	default
-	{
-		_button ctrlSetText "\spotify\ui_f_spotify\data\icons\volume_mute_ca.paa";
-	};
-};
+if (_slider getVariable ['aasp_seeking', false] && {!_seek}) exitWith {};
 
-// Incase this is called rather then through a user action
-_slider sliderSetPosition _value;
+if (!_request || (profilenamespace getVariable ['aasp_info_delay', 3]) > 1) then
+{
+	switch true do
+	{
+		case (_value > 50):
+		{
+			_button ctrlSetText "\spotify\ui_f_spotify\data\icons\volume_high_ca.paa";
+		};
+		case (_value > 0):
+		{
+			_button ctrlSetText "\spotify\ui_f_spotify\data\icons\volume_low_ca.paa";
+		};
+		default
+		{
+			_button ctrlSetText "\spotify\ui_f_spotify\data\icons\volume_mute_ca.paa";
+		};
+	};
+
+	// Incase this is called rather then through a user action
+	_slider sliderSetPosition _value;
+};
 
 // Save the last non-zero volume level
 if (_value > 0) then

@@ -44,6 +44,36 @@ namespace ArmaSpotifyController
             }
         }
 
+        internal static void Clear()
+        {
+            try
+            {
+                Log.Message("Clearing Cache");
+
+                int deleted = 0;
+                string[] files = Directory.GetFiles(data_directory);
+                foreach (string file in files)
+                {
+                    try
+                    {
+                        new FileInfo(file).Delete();
+                        deleted += 1;
+                    }
+                    catch
+                    {
+                        Log.Message("Unable to delete " + file);
+                    };
+                }
+
+                Log.Message("Deleted " + deleted + " file(s) from cache");
+            }
+            catch (Exception e)
+            {
+                Log.Message("Clearing cache exception: " + e.Message);
+            }
+            
+        }
+        
         internal static async Task DownloadImage(string uri_string, string variable = "")
         {
             try
@@ -66,8 +96,6 @@ namespace ArmaSpotifyController
                     // Download the image and write to the file
                     var imageBytes = await Master.client.GetByteArrayAsync(uri);
                     File.WriteAllBytes(path, imageBytes);
-
-                    Log.Message("Downloaded file: " + path);
                 }
 
                 if (variable != "")
@@ -153,8 +181,8 @@ namespace ArmaSpotifyController
         internal async static void Setup()
         {
             // Set file directory
-            log_directory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\logs";
-            log_file = log_directory + @"\ArmaSpotifyController_" + DateTime.Now.ToString("dd-MM-yyyy_HH-mm-ss") + ".txt";
+            log_directory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\logs\";
+            log_file = log_directory + "ArmaSpotifyController_" + DateTime.Now.ToString("dd-MM-yyyy_HH-mm-ss") + ".txt";
             Directory.CreateDirectory(log_directory);
 
             // Log the image directory
@@ -186,6 +214,39 @@ namespace ArmaSpotifyController
 
                 // Get new token through task in the background
                 await Request.RefeshData(true);
+            }
+        }
+
+        internal static void Clear()
+        {
+            try
+            {
+                Message("Clearing logs");
+
+                int deleted = 0;
+                string[] files = Directory.GetFiles(log_directory);
+                foreach (string file in files)
+                {
+                    try
+                    {
+                        // Do not delete the current log file
+                        if (file != log_file)
+                        {
+                            new FileInfo(file).Delete();
+                            deleted += 1;
+                        }
+                    }
+                    catch
+                    {
+                        Message("Unable to delete " + file);
+                    };                    
+                }
+
+                Message("Deleted " + deleted + " file(s) from logs");
+            }
+            catch (Exception e)
+            {
+                Message("Clearing logs exception: " + e.Message);
             }
         }
 
@@ -318,11 +379,19 @@ namespace ArmaSpotifyController
                     {
                         Log.Message("Starting user info task request");
 
-                        await Request.GetUserInfo();
+                        await GetUserInfo();
                     }
                 }
                 else
                 {
+                    if (response.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        if (last_device_id != null)
+                        {
+                            Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
+                            await SetUserDevice(last_device_id);
+                        }
+                    }
                     Log.Message("'RefeshData' error: " + response.StatusCode.ToString());
                     Log.Message(response.ReasonPhrase);
                 }
@@ -444,7 +513,7 @@ namespace ArmaSpotifyController
                 Log.Message("'SetUserDevice' exception: " + e.Message);
             }
         }
-
+        
         internal async static Task SetUserVolume(int volume_level)
         {
             try
@@ -856,6 +925,12 @@ namespace ArmaSpotifyController
                         var serializer = new JavaScriptSerializer();
                         Classes.UserPlayback.Root current_data = serializer.Deserialize<Classes.UserPlayback.Root>(data);
 
+                        // Set device id for resyncing device with Spotify API
+                        if (current_data.device.id != null)
+                        {
+                            last_device_id = current_data.device.id;
+                        }
+
                         bool playing = current_data.is_playing;
                         bool nsfw = current_data.item.@explicit;
                         bool shuffle = current_data.shuffle_state;
@@ -921,7 +996,6 @@ namespace ArmaSpotifyController
                 Log.Message("'RequestInfo' exception: " + e.Message);
             }
         }
-
     }
 
     public class Master
@@ -975,9 +1049,6 @@ namespace ArmaSpotifyController
 
             // Setup log file and stuff for error logging
             Log.Setup();
-
-            // Log setup called
-            Log.Message("DLL setup running");
 
             // Setup image saving
             Image.Setup();
@@ -1325,6 +1396,31 @@ namespace ArmaSpotifyController
                     // DATA: Show where images are being saved to
                     case "data":
                         output.Append(Image.data_directory);
+                        break;
+                        
+                    // CLEAR_CACHE: Deletes the cache directory
+                    case "clear_cache":
+                        Image.Clear();
+                        break;
+                        
+                    // CLEAR_LOGS: Deletes the cache directory
+                    case "clear_logs":
+                        Log.Clear();
+                        break;
+
+                    // OPEN_CACHE: Deletes the cache directory
+                    case "open_cache":
+                        Process.Start(Image.data_directory);
+                        break;
+
+                    // OPEN_LOGS: Deletes the cache directory
+                    case "open_logs":
+                        Process.Start(Log.log_directory);
+                        break;
+
+                    // GITHUB: Open the GitHub page for the mod
+                    case "github":
+                        Process.Start("https://github.com/Asaayu/Arma-Spotify-Player");
                         break;
 
                     // DEFAULT: Show version information

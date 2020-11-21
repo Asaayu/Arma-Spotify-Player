@@ -49,7 +49,7 @@ switch (toLower _mode) do
 			_list ctrlEnable false;
 
 			// Add loading item
-			_list lbAdd "Loading";
+			_list lbAdd "No Spotify devices found";
 
 			// Create random string
 			private _variable = str round random 100000;
@@ -143,6 +143,9 @@ switch (toLower _mode) do
 			private _data = _data splitString ":";
 			// Request new playback device to Spotify Web API
 			"ArmaSpotifyController" callExtension format["spotify:set_device:%1",_data#0];
+
+			profilenamespace setVariable ["aasp_last_device",_data#0];
+			saveProfileNamespace;
 
 			[_data#1, false] call spotify_fnc_volume;
 		}

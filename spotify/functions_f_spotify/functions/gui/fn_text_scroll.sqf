@@ -5,7 +5,7 @@ params
 ];
 
 #define NULL_CHECK if (isNull _ctrl) exitWith {};
-#define CHANGE_CHECK if !(_ctrl getVariable ["aasp_text_scroll", false]) exitWith { _ctrl ctrlSetPositionX (_position select 0); _ctrl ctrlCommit 0; };
+#define CHANGE_CHECK if !(_ctrl getVariable ["aasp_text_scroll", false]) exitWith {};
 
 if (isNull _ctrl || _visable <= 0 || _ctrl getVariable ["aasp_text_scroll", false]) exitWith {};
 

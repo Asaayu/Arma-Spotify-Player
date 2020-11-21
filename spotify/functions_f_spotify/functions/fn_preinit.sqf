@@ -20,6 +20,11 @@ addMissionEventHandler ["ExtensionCallback",
 			private _data = _data splitString "|";
 			(uiNamespace getVariable [_data#1, controlNull]) ctrlSetText (_data#0);
 		};
+		case ("ctrlsettext_playing"):
+		{
+			private _data = _data splitString "|";
+			(uiNamespace getVariable [_data#1, controlNull]) ctrlSetText (_data#0);
+		};
 		case ("spotify_fnc_update_like"):
 		{
 			(parseSimpleArray _data) params ["_result","_id"];
@@ -53,6 +58,68 @@ addMissionEventHandler ["ExtensionCallback",
 		};
 	};
 }];
+
+[
+	"itemAdd",
+	[
+		"aasp_master_loop",
+		{
+			private _delay = profilenamespace getVariable ['aasp_info_delay', 3];
+			if !(_delay isEqualType 1) then { _delay = 3; };
+			_delay = _delay max 1;
+			private _display = uiNamespace getVariable ["aasp_spotify_display", displayNull];
+			private _no_device = _display displayCtrl 1306;
+			if (!isNull _display && {!ctrlShown _no_device}) then
+			{
+				private _play = _display displayCtrl 1000;
+				private _seek = _display displayCtrl 1100;
+
+				private _playing = (ctrlText _play) find "pause_ca.paa" > -1;
+				if _playing then
+				{
+					private _slider_range = sliderRange _seek;
+					private _new_position = 1 + sliderPosition _seek;
+
+					// Every X seconds or when the song 'ends' request new data from spotify
+					private _loop_interation = missionNamespace getVariable ["aasp_master_loop_iteration", 1];
+					if (_loop_interation >= _delay || _new_position > _slider_range#1) then
+					{
+						missionNamespace setVariable ["aasp_master_loop_iteration", 1];
+
+						// Request update
+						"ArmaSpotifyController" callExtension "spotify:request_info";
+					}
+					else
+					{
+						// Update seek bar
+						[_new_position, _slider_range#1, true] call spotify_fnc_set_playback;
+
+						// Just increment the loop iteration
+						missionNamespace setVariable ["aasp_master_loop_iteration", _loop_interation + 1];
+					};
+				}
+				else
+				{
+					// If nothing is playing send a request every 5 seconds to check if playback has started
+					private _loop_interation = missionNamespace getVariable ["aasp_master_loop_iteration", 1];
+					if (_loop_interation >= _delay) then
+					{
+						missionNamespace setVariable ["aasp_master_loop_iteration", 1];
+
+						// Request update
+						"ArmaSpotifyController" callExtension "spotify:request_info";
+					}
+					else
+					{
+						// Just increment the loop iteration
+						missionNamespace setVariable ["aasp_master_loop_iteration", _loop_interation + 1];
+					};
+				};
+			};
+		},
+		1
+	]
+] call BIS_fnc_loop;
 
 [
 	"itemAdd",

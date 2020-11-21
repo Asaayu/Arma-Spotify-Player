@@ -9,7 +9,10 @@ if (ctrlText _ctrl find "pause_ca.paa" >= 0) then
 	// Stop
 	"ArmaSpotifyController" callExtension "spotify:pause";
 
-	_ctrl ctrlSetText "\spotify\ui_f_spotify\data\icons\play_ca.paa";
+	if ((profilenamespace getVariable ['aasp_info_delay', 3]) > 1) then
+	{
+		_ctrl ctrlSetText "\spotify\ui_f_spotify\data\icons\play_ca.paa";
+	};
 }
 else
 {
@@ -17,5 +20,8 @@ else
 	// Start
 	"ArmaSpotifyController" callExtension "spotify:play";
 
-	_ctrl ctrlSetText "\spotify\ui_f_spotify\data\icons\pause_ca.paa";
+	if ((profilenamespace getVariable ['aasp_info_delay', 3]) > 1) then
+	{
+		_ctrl ctrlSetText "\spotify\ui_f_spotify\data\icons\pause_ca.paa";
+	};
 };

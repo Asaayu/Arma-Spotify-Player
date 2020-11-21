@@ -13,6 +13,7 @@ class CfgPatches
 };
 
 class ctrlStaticBackground;
+class ctrlActiveText;
 class ctrlActivePicture;
 class ctrlActivePictureKeepAspect;
 class ctrlStaticPicture;
@@ -27,6 +28,7 @@ class ctrlButton;
 class ctrlEdit;
 class ctrlXSliderH;
 class ctrlListbox;
+class ctrlCombo;
 
 // Spotify GUI
 #include "spotify.hpp"

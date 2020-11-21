@@ -1,7 +1,9 @@
 params
 [
 	["_position", 0, [0]],
-	["_length", 0, [0]]
+	["_length", 0, [0]],
+	["_auto", false, [false]],
+	["_seek", false, [false]]
 ];
 
 if (_length <= 0) exitWith {};
@@ -11,21 +13,30 @@ private _slider = _display displayCtrl 1100;
 private _current_time = _display displayCtrl 1210;
 private _total_time = _display displayCtrl 1215;
 
-if (isNull _display || isNull _slider || isNull _current_time || isNull _total_time) then {};
+// Error checking
+if (isNull _display) then {};
+
+// Don't allow auto updates to overwrite the user when they are seeking
+if (_auto && {_slider getVariable ["aasp_seeking", false]}) exitWith {};
+
+// Don't allow auto update to increment if there was a change recently
+// This avoids ui updates from causing jumps in the seek position
+if (_auto && {missionNamespace setVariable ["aasp_seek_update", 0] >= time}) exitWith {};
 
 // Limit position to the minimum and maximum of the song length
-_position = ((_position max 0) min _length);
+private _position = ((_position max 0) min _length);
 
-// Set slider range
+// If the user is seeking and this isn't a seek request and the song hasen't changed then stop running
+if (_slider getVariable ["aasp_seeking", false] && {!_seek && { (sliderRange _slider) isEqualTo [0, _length]}}) exitWith {};
+
 _slider sliderSetRange [0, _length];
-
-// Set slider position
 _slider sliderSetPosition _position;
 
 private _current_string = [_position, "MM:SS"] call BIS_fnc_secondsToString;
 private _length_string = [_length, "MM:SS"] call BIS_fnc_secondsToString;
 private _n_length_string = [_length - _position, "MM:SS"] call BIS_fnc_secondsToString;
 
-// Convert seconds to time string which allows
 _current_time ctrlSetText _current_string;
 _total_time ctrlSetText ("-" + _n_length_string);
+
+missionNamespace setVariable ["aasp_seek_update", time + 0.75];
