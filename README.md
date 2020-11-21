@@ -1,6 +1,8 @@
 # Asaayu's Arma Spotify Player
 ### Asaayu's Arma Spotify Player (AASP) is an in-game system to allow users to interact with their Spotify application through through Arma 3.
 
+---
+
 ## Authorization Scopes
 Scopes provide Spotify users using third-party apps the confidence that only the information they choose to share will be shared, and nothing more.
 You can find a list of all the avaliable scopes [on the Spotify developer website](https://developer.spotify.com/documentation/general/guides/scopes/).
@@ -17,6 +19,18 @@ You can find a list of all the avaliable scopes [on the Spotify developer websit
 - [user-top-read](https://developer.spotify.com/documentation/general/guides/scopes/#user-top-read)
 - [user-library-modify](https://developer.spotify.com/documentation/general/guides/scopes/#user-library-modify)
 - [user-library-read](https://developer.spotify.com/documentation/general/guides/scopes/#user-library-read)
+
+---
+
+## Telemetry Information
+The Spotify Developer Dashboard displays the following telemetry data,
+ - Daily Active Users - The number of users who used the application on that day.
+ - Monthly Active Users - The number of users who used the application within the last 30 days of that day.
+ - Number of Requests/Endpoint - The total number of requests sent to an endpoint.
+ - Total Number of Requests - The total number of requests on that day.
+ - Number of Users Per Country - A color shaded map which shows the ratio of users from each country who used the application on the previous day.
+
+---
 
 ## Legal Information
 **Asaayu's Arma Spotify Player (AASP)** is not affiliated, created by, nor endorsed by Spotify, Spotify AB, and Spotify Technology S.A.
