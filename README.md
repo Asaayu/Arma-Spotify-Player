@@ -3,6 +3,14 @@
 
 ---
 
+## EULA & Privacy Policy
+Upon usage of this software and any occuping data for use with this software you are agreeing to the softwares [end-user license agreement](https://github.com/Asaayu/Arma-Spotify-Player/blob/main/EULA).
+If you do not wish to agree to this end-user license agreement then immediately delete all files you have downloaded for use with this software, including files this software has created or downloaded from the Spotify Service.
+
+The collection of your data provided by the Spotify Service is subject to this softwares [privacy policy](https://github.com/Asaayu/Arma-Spotify-Player/blob/main/PRIVACY-POLICY).
+
+---
+
 ## Authorization Scopes
 Scopes provide Spotify users using third-party apps the confidence that only the information they choose to share will be shared, and nothing more.
 You can find a list of all the avaliable scopes [on the Spotify developer website](https://developer.spotify.com/documentation/general/guides/scopes/).
