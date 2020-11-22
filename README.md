@@ -39,6 +39,8 @@ The Spotify Developer Dashboard displays the following telemetry data,
 
 **Please make sure you are upto date with Spotify's [privacy policy](https://www.spotify.com/us/legal/privacy-policy/), [terms and conditions of use](https://www.spotify.com/us/legal/end-user-agreement/), and [copyright policy](https://www.spotify.com/us/legal/copyright-policy/).**
 
+**You should also be aware of what [content you share with Spotify](https://support.spotify.com/us/article/information-you-share-with-spotify/).**
+
 **Residents of California please read Spotify's [california privacy disclosures](https://www.spotify.com/us/legal/California-privacy-disclosure/)**
 
 **Residents of the European Union please read Spotify's [GDPR article 15 information](https://support.spotify.com/us/article/gdpr-article-15-information/)**
