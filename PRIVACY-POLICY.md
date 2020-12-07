@@ -25,7 +25,7 @@ We collect your personal information in order to:
 # Options
 Allowing this service to collect personal information about you from Spotify is optional. If you choose to decline or revoke this softwares access to your Spotify data , we'll be unable to provide services related to connecting to the Spotify Web API or syncing between this software and your Spotify Player.
 
-# Data retention and deletion
+# Keeping your personal data safe
 We keep your information safe by only storing personally identifiable information on your local device and do not transmit any identifiable information to services outside of the Spotify Web API service.
 
 # Data retention and deletion
