@@ -91,3 +91,10 @@
 
 32.  All notices to the Vendor under this Agreement are to be provided through the following means:
 Discord: `Asaayu#1337`
+
+**EULA Updates**
+
+33. When we make changes to this EULA, we will force you to re-authenticate your Spotify account with this software and inform you of the date of the latest change to this EULA in order to provide you with prominent notice of these changes.
+    Please, therefore, make sure you read any such notice carefully.
+
+
