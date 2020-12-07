@@ -1,3 +1,5 @@
+Last updated: 7/12/2020
+
 # What we collect
 We collect personal information about you from Spotify, including information about your:
  * Spotify Subscription
