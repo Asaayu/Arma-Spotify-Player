@@ -4,10 +4,10 @@
 ---
 
 ## EULA & Privacy Policy
-Upon usage of this software and any occuping data for use with this software you are agreeing to the softwares [end-user license agreement](https://github.com/Asaayu/Arma-Spotify-Player/blob/main/EULA).
+Upon usage of this software and any occuping data for use with this software you are agreeing to the softwares [end user license agreement](https://github.com/Asaayu/Arma-Spotify-Player/blob/main/EULA.md).
 If you do not wish to agree to this end-user license agreement then immediately delete all files you have downloaded for use with this software, including files this software has created or downloaded from the Spotify Service.
 
-The collection of your data provided by the Spotify Service is subject to this softwares [privacy policy](https://github.com/Asaayu/Arma-Spotify-Player/blob/main/PRIVACY-POLICY).
+The collection of your data provided by the Spotify Service is subject to this softwares [privacy policy](https://github.com/Asaayu/Arma-Spotify-Player/blob/main/PRIVACY-POLICY.md).
 
 ---
 
