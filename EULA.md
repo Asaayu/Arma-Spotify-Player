@@ -1,3 +1,4 @@
+Last updated: 7/12/2020
 
 **End User License Agreement**
 
