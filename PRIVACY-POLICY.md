@@ -29,7 +29,7 @@ Allowing this service to collect personal information about you from Spotify is 
 We keep your information safe by only storing personally identifiable information on your local device and do not transmit any identifiable information to services outside of the Spotify Web API service.
 
 # Data retention and deletion
-We keep your information for the length of time the Arma 3 application is open at which point we destroy it by stopping execution of the program and removing all information from memory.
+We keep your information for the length of time the Arma 3 application is open at which point it is destroyed when the Arma 3 application is closed.
 
 The personal information that this application holds is only avaliable on your computer and is gathered from the Spotify Service unless otherwise stated. Information about your control over your Spotify data is avaliable in the [Spotify Privacy Policy](https://www.spotify.com/legal/privacy-policy/#s3).
 
