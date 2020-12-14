@@ -1,10 +1,10 @@
 Last updated: 7/12/2020
 
-**End User License Agreement**
+**End-user license agreement**
 
 **License**
 
-1.  Under this End User License Agreement (the "Agreement"), Asaayu (the "Vendor") grants to the user (the "Licensee") a non-exclusive and non-transferable license (the "License") to use Asaayu's Arma Spotify Player (the "Software").
+1.  Under this End-user license agreement (the "Agreement"), Asaayu (the "Vendor") grants to the user (the "Licensee") a non-exclusive and non-transferable license (the "License") to use Asaayu's Arma Spotify Player (the "Software").
 
 2.  "Software" includes the executable computer programs and any related printed, electronic and online documentation and any other files that may accompany the product.
 
