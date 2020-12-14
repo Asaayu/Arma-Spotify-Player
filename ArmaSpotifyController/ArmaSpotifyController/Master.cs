@@ -69,18 +69,24 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Message("Clearing cache exception: " + e.Message);
+                Log.Message("Clearing cache exception: " + e.ToString());
             }
             
         }
         
-        internal static async Task DownloadImage(string uri_string, string variable = "")
+        internal static async Task<string> DownloadImage(string uri_string, string variable = "")
         {
             try
             {
                 // Don't try to download an empty string
-                if (uri_string == "")
-                    return;
+                if (uri_string == "https://i.scdn.co/")
+                {
+                    if (variable != "")
+                    {
+                        Master.callback.Invoke("ArmaSpotifyController", "ctrlSetText", "#(rgb,8,8,3)color(0.3,0.3,0.3,1)" + "|" + variable);
+                    }
+                    return "#(rgb,8,8,3)color(0.3,0.3,0.3,1)";
+                }
 
                 // Create new URI from string input
                 Uri uri = new Uri(uri_string);
@@ -102,6 +108,8 @@ namespace ArmaSpotifyController
                 {
                     Master.callback.Invoke("ArmaSpotifyController", "ctrlSetText", path + "|" + variable);
                 }
+
+                return path.ToString();
             }
             catch (Exception e)
             {
@@ -110,22 +118,61 @@ namespace ArmaSpotifyController
                     Master.callback.Invoke("ArmaSpotifyController", "ctrlSetText", "#(rgb,8,8,3)color(0.3,0.3,0.3,1)" + "|" + variable);
                 }
 
-                Log.Message("Attempted to load image from URL but ran into error: " + e.Message);
+                Log.Message("Attempted to load image from URL but ran into error: " + e.ToString());
                 Log.Message("Uri: " + uri_string);
-            }            
+                return "#(rgb,8,8,3)color(0.3,0.3,0.3,1)";
+            }         
         }
 
-        internal static string[] DrawText(String text, Font font, Color textColor, Color backColor)
+        internal static string[] DrawText(String text, Font font, Color textColor, Color backColor, bool strip_html = false)
         {
+            if (text == "")
+            {
+                // Output an exmpy reply for no text imput, number cannot be 0
+                return new string[] { "", "1", "1" };
+            }
+
+            if (strip_html)
+            {
+                // Remove html tags 
+                char[] artist_array = new char[text.Length];
+                int arrayIndex = 0;
+                bool inside = false;
+
+                for (int i = 0; i < text.Length; i++)
+                {
+                    char let = text[i];
+                    if (let == '<')
+                    {
+                        inside = true;
+                        continue;
+                    }
+                    else if (let == '>')
+                    {
+                        inside = false;
+                        continue;
+                    }
+
+                    if (!inside)
+                    {
+                        artist_array[arrayIndex] = let;
+                        arrayIndex++;
+                    }
+                }
+                text = new string(artist_array, 0, arrayIndex);
+            }
+
             // Get filename
             byte[] sha_bytes = SHA256Managed.Create().ComputeHash(Encoding.UTF8.GetBytes(text));
             String filename = Convert.ToBase64String(sha_bytes).Split('=')[0].Replace('+', '-').Replace('/', '_');
 
+            var path = Path.Combine(data_directory, filename + "_" + font.Size + "_" + textColor.R.ToString() + textColor.G.ToString() + textColor.B.ToString() + textColor.A.ToString() + "_" + backColor.R.ToString() + backColor.G.ToString() + backColor.B.ToString() + backColor.A.ToString() + ".jpg");
+
             // Check if file already exists, if it does then don't bother creating another one
-            if (File.Exists(data_directory + filename + ".jpg"))
+            if (File.Exists(@path.ToString()))
             {
-                System.Drawing.Image ext_img = System.Drawing.Image.FromFile(data_directory + filename + ".jpg");
-                return new string[] { data_directory + filename + ".jpg", ext_img.Width.ToString(), ext_img.Height.ToString() };
+                System.Drawing.Image ext_img = System.Drawing.Image.FromFile(path.ToString());
+                return new string[] { path.ToString(), ext_img.Width.ToString(), ext_img.Height.ToString() };
             }
 
             // First, create a dummy bitmap just to get a graphics object
@@ -161,10 +208,10 @@ namespace ArmaSpotifyController
             drawing.Dispose();
 
             // Save to disk
-            img.Save(data_directory + filename + ".jpg", ImageFormat.Jpeg);
+            img.Save(path.ToString(), ImageFormat.Jpeg);
 
             // Send data in return
-            return new string[] { data_directory + filename + ".jpg", textSize.Width.ToString(), textSize.Height.ToString() };
+            return new string[] { path.ToString(), textSize.Width.ToString(), textSize.Height.ToString() };
         }
     }
 
@@ -246,7 +293,7 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Message("Clearing logs exception: " + e.Message);
+                Message("Clearing logs exception: " + e.ToString());
             }
         }
 
@@ -276,7 +323,7 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Message("Attempted to save token but ran into error: " + e.Message);
+                Message("Attempted to save token but ran into error: " + e.ToString());
                 return false;
             }
         }
@@ -333,15 +380,36 @@ namespace ArmaSpotifyController
         }
     }
 
+    public class Legal
+    {
+        internal async static Task<string> GetLastUpdate()
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                return (await Master.client.GetStringAsync(Master.legal_update_file)).Replace("\n", "").Replace("\r", "").Trim();
+            }
+            catch (Exception e)
+            {
+                Log.Message("'GetLastUpdate' exception: " + e.ToString());
+                return "";
+            }
+        }
+    }
+
     public class Request
     {
         static readonly int refresh_delay = 250;
         static string last_device_id;
+        static string last_song_id;
+        static bool is_playing;
+        static bool last_connection;
 
         internal async static Task RefeshData(bool save_info = false)
         {
             try
             {
+                
                 if (DateTime.Now < Master.client_refresh_time || Master.client_refresh_token == null)
                     return;
 
@@ -352,7 +420,10 @@ namespace ArmaSpotifyController
                     { "refresh_token", Master.client_refresh_token },
                     { "client_id", Master.app_client_id }
                 };
-                var content = new FormUrlEncodedContent(values);
+
+                Master.client.DefaultRequestHeaders.Clear();
+
+                HttpContent content = new FormUrlEncodedContent(values);
 
                 var response = await Master.client.PostAsync("https://accounts.spotify.com/api/token", content);
 
@@ -360,6 +431,8 @@ namespace ArmaSpotifyController
                 {
                     var serializer = new JavaScriptSerializer();
                     Classes.RefreshToken.Root result = serializer.Deserialize<Classes.RefreshToken.Root>(await response.Content.ReadAsStringAsync());
+
+                    string old_token = Master.client_refresh_token;
 
                     Master.client_access_token = result.access_token;
                     Master.client_refresh_token = result.refresh_token;
@@ -371,7 +444,7 @@ namespace ArmaSpotifyController
                     Log.SaveToken();
 
                     // Set the refresh timer
-                    Master.client_refresh_time = DateTime.Now.AddSeconds(3000);
+                    Master.client_refresh_time = DateTime.Now.AddSeconds(3300);
 
                     Log.Message("Users refresh token has been updated successfully");
 
@@ -384,21 +457,19 @@ namespace ArmaSpotifyController
                 }
                 else
                 {
-                    if (response.StatusCode == HttpStatusCode.NotFound)
+                    if (response.StatusCode == HttpStatusCode.Forbidden)
                     {
-                        if (last_device_id != null)
-                        {
-                            Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
-                            await SetUserDevice(last_device_id);
-                        }
+                        // Remove the access + refresh token to unauthorise the user
+                        Master.client_access_token = null;
+                        Master.client_refresh_token = null;
                     }
-                    Log.Message("'RefeshData' error: " + response.StatusCode.ToString());
-                    Log.Message(response.ReasonPhrase);
+                    Log.Message("'RefeshData' error: " + response.ReasonPhrase);
+                    Log.Message(await response.Content.ReadAsStringAsync());
                 }
             }
             catch (Exception e)
             {
-                Log.Message("'RefeshData' exception: " + e.Message);
+                Log.Message("'RefeshData' exception: " + e.ToString());
             }
         }
 
@@ -437,7 +508,7 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Message("'GetUserInfo' exception: " + e.Message);
+                Log.Message("'GetUserInfo' exception: " + e.ToString());
             }
         }
 
@@ -480,7 +551,7 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Message("'GetUserDevices' exception: " + e.Message);
+                Log.Message("'GetUserDevices' exception: " + e.ToString());
             }
         }
 
@@ -491,26 +562,32 @@ namespace ArmaSpotifyController
                 Master.client.DefaultRequestHeaders.Clear();
                 Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
 
-                var content = new StringContent("{\"device_ids\" : [\"" + device_id + "\"], \"play\" : true}");
+                var content = new StringContent("{\"device_ids\" : [\"" + device_id + "\"], \"play\" : " + is_playing.ToString().ToLower() + "}");
 
                 var response = await Master.client.PutAsync("https://api.spotify.com/v1/me/player", content);
 
                 if (response.IsSuccessStatusCode)
                 {
+                    last_connection = true;
+
                     Log.Message("Transfered audio playback to " + device_id);
+                    Log.Message("Playing: " + is_playing);
                     last_device_id = device_id;
                     await Task.Delay(refresh_delay);
                     await RequestInfo();
                 }
                 else
                 {
+                    // Disable reconnection if connection failed
+                    last_connection = false;
+
                     Log.Message("'SetUserDevice' Error: " + response.StatusCode.ToString());
                     Log.Message(response.ReasonPhrase);
                 }
             }
             catch (Exception e)
             {
-                Log.Message("'SetUserDevice' exception: " + e.Message);
+                Log.Message("'SetUserDevice' exception: " + e.ToString());
             }
         }
         
@@ -535,6 +612,8 @@ namespace ArmaSpotifyController
                         {
                             Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
                             await SetUserDevice(last_device_id);
+                            await Task.Delay(refresh_delay);
+                            await SetUserVolume(volume_level);
                         }
                     }
                     Log.Message("'SetUserVolume' Error: " + response.StatusCode.ToString());
@@ -543,7 +622,7 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Message("'SetUserVolume' exception: " + e.Message);
+                Log.Message("'SetUserVolume' exception: " + e.ToString());
             }
         }
 
@@ -566,10 +645,12 @@ namespace ArmaSpotifyController
                 {
                     if (response.StatusCode == HttpStatusCode.NotFound)
                     {
-                        if (last_device_id != null)
+                        if (last_device_id != null && last_connection)
                         {
                             Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
                             await SetUserDevice(last_device_id);
+                            await Task.Delay(refresh_delay);
+                            await PausePlayback();
                         }
                     }
                     Log.Message("'PausePlayback' Error: " + response.StatusCode.ToString());
@@ -578,7 +659,7 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Message("'PausePlayback' exception: " + e.Message);
+                Log.Message("'PausePlayback' exception: " + e.ToString());
             }
         }
 
@@ -605,6 +686,8 @@ namespace ArmaSpotifyController
                         {
                             Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
                             await SetUserDevice(last_device_id);
+                            await Task.Delay(refresh_delay);
+                            await ResumePlayback();
                         }
                     }
                     Log.Message("'ResumePlayback' Error: " + response.StatusCode.ToString());
@@ -613,7 +696,145 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Message("'ResumePlayback' exception: " + e.Message);
+                Log.Message("'ResumePlayback' exception: " + e.ToString());
+            }
+        }
+
+        internal async static Task PlayTrack(string track_id)
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                if (track_id != "")
+                {
+                    var content = new StringContent("{\"uris\":[\"spotify:track:" + track_id + "\"]}");
+
+                    var response = await Master.client.PutAsync("https://api.spotify.com/v1/me/player/play", content);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Log.Message("Playing track: " + track_id);
+                        await Task.Delay(refresh_delay);
+                        await RequestInfo();
+                    }
+                    else
+                    {
+                        if (response.StatusCode == HttpStatusCode.NotFound)
+                        {
+                            if (last_device_id != null)
+                            {
+                                Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
+                                await SetUserDevice(last_device_id);
+                                await Task.Delay(refresh_delay);
+                                await PlayTrack(track_id);
+                            }
+                        }
+                        Log.Message("'PlayTrack' Error: " + response.StatusCode.ToString());
+                        Log.Message(response.ReasonPhrase);
+                    }
+                }
+                else
+                {
+                    Log.Message("'PlayTrack' Error: User tried to play song but no id could be found.");
+                }                
+            }
+            catch (Exception e)
+            {
+                Log.Message("'PlayTrack' exception: " + e.ToString());
+            }
+        }
+
+        internal async static Task PlayAlbum(string album_id, int start_index = 0)
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                if (album_id != "")
+                {
+                    var content = new StringContent("{\"context_uri\":\"spotify:album:" + album_id + "\",\"offset\": {\"position\": " + start_index + "}}");
+
+                    var response = await Master.client.PutAsync("https://api.spotify.com/v1/me/player/play", content);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Log.Message("Playing album: " + album_id + " - " + start_index);
+                        await Task.Delay(refresh_delay*2);
+                        await RequestInfo();
+                    }
+                    else
+                    {
+                        if (response.StatusCode == HttpStatusCode.NotFound)
+                        {
+                            if (last_device_id != null)
+                            {
+                                Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
+                                await SetUserDevice(last_device_id);
+                                await Task.Delay(refresh_delay);
+                                await PlayAlbum(album_id, start_index);
+                            }
+                        }
+                        Log.Message("'PlayTrack' Error: " + response.StatusCode.ToString());
+                        Log.Message(response.ReasonPhrase);
+                    }
+                }
+                else
+                {
+                    Log.Message("'PlayTrack' Error: User tried to play song but no id could be found.");
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message("'PlayTrack' exception: " + e.ToString());
+            }
+        }
+
+        internal async static Task PlayPlaylist(string playlist_id, int start_index = 0)
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                if (playlist_id != "")
+                {
+                    var content = new StringContent("{\"context_uri\":\"spotify:playlist:" + playlist_id + "\",\"offset\": {\"position\": " + start_index + "}}");
+
+                    var response = await Master.client.PutAsync("https://api.spotify.com/v1/me/player/play", content);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Log.Message("Playing playlist: " + playlist_id + " - " + start_index);
+                        await Task.Delay(refresh_delay);
+                        await RequestInfo();
+                    }
+                    else
+                    {
+                        if (response.StatusCode == HttpStatusCode.NotFound)
+                        {
+                            if (last_device_id != null)
+                            {
+                                Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
+                                await SetUserDevice(last_device_id);
+                                await Task.Delay(refresh_delay);
+                                await PlayPlaylist(playlist_id, start_index);
+                            }
+                        }
+                        Log.Message("'PlayPlaylist' Error: " + response.StatusCode.ToString());
+                        Log.Message(response.ReasonPhrase);
+                    }
+                }
+                else
+                {
+                    Log.Message("'PlayPlaylist' Error: User tried to play song but no id could be found.");
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message("'PlayPlaylist' exception: " + e.ToString());
             }
         }
 
@@ -640,6 +861,8 @@ namespace ArmaSpotifyController
                         {
                             Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
                             await SetUserDevice(last_device_id);
+                            await Task.Delay(refresh_delay);
+                            await SkipNext();
                         }
                     }
                     Log.Message("'SkipNext' Error: " + response.StatusCode.ToString());
@@ -648,7 +871,7 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Message("'SkipNext' exception: " + e.Message);
+                Log.Message("'SkipNext' exception: " + e.ToString());
             }
         }
 
@@ -675,6 +898,8 @@ namespace ArmaSpotifyController
                         {
                             Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
                             await SetUserDevice(last_device_id);
+                            await Task.Delay(refresh_delay);
+                            await SkipBack();
                         }
                     }
                     Log.Message("'SkipBack' Error: " + response.StatusCode.ToString());
@@ -683,7 +908,7 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Message("'SkipBack' exception: " + e.Message);
+                Log.Message("'SkipBack' exception: " + e.ToString());
             }
         }
 
@@ -708,6 +933,8 @@ namespace ArmaSpotifyController
                         {
                             Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
                             await SetUserDevice(last_device_id);
+                            await Task.Delay(refresh_delay);
+                            await Seek(position_ms);
                         }
                     }
                     Log.Message("'Seek' Error: " + response.StatusCode.ToString());
@@ -716,7 +943,7 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Message("'Seek' exception: " + e.Message);
+                Log.Message("'Seek' exception: " + e.ToString());
             }
         }
 
@@ -741,6 +968,8 @@ namespace ArmaSpotifyController
                         {
                             Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
                             await SetUserDevice(last_device_id);
+                            await Task.Delay(refresh_delay);
+                            await Repeat(mode);
                         }
                     }
                     Log.Message("'Repeat' Error: " + response.StatusCode.ToString());
@@ -749,7 +978,7 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Message("'Repeat' exception: " + e.Message);
+                Log.Message("'Repeat' exception: " + e.ToString());
             }
         }
 
@@ -774,6 +1003,8 @@ namespace ArmaSpotifyController
                         {
                             Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
                             await SetUserDevice(last_device_id);
+                            await Task.Delay(refresh_delay);
+                            await Shuffle(mode);
                         }
                     }
                     Log.Message("'Shuffle' Error: " + response.StatusCode.ToString());
@@ -782,7 +1013,7 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Message("'Shuffle' exception: " + e.Message);
+                Log.Message("'Shuffle' exception: " + e.ToString());
             }
         }
 
@@ -810,6 +1041,8 @@ namespace ArmaSpotifyController
                             {
                                 Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
                                 await SetUserDevice(last_device_id);
+                                await Task.Delay(refresh_delay);
+                                await SongLiked(song_id);
                             }
                         }
                         Log.Message("'SongLiked' Error: " + response.StatusCode.ToString());
@@ -823,7 +1056,7 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Message("'SongLiked' exception: " + e.Message);
+                Log.Message("'SongLiked' exception: " + e.ToString());
             }
         }
 
@@ -850,6 +1083,8 @@ namespace ArmaSpotifyController
                             {
                                 Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
                                 await SetUserDevice(last_device_id);
+                                await Task.Delay(refresh_delay);
+                                await LikeSong(song_id);
                             }
                         }
                         Log.Message("'LikeSong' Error: " + response.StatusCode.ToString());
@@ -863,7 +1098,7 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Message("'LikeSong' exception: " + e.Message);
+                Log.Message("'LikeSong' exception: " + e.ToString());
             }
         }
 
@@ -890,6 +1125,8 @@ namespace ArmaSpotifyController
                             {
                                 Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
                                 await SetUserDevice(last_device_id);
+                                await Task.Delay(refresh_delay);
+                                await UnlikeSong(song_id);
                             }
                         }
                         Log.Message("'UnlikeSong' Error: " + response.StatusCode.ToString());
@@ -903,7 +1140,473 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Message("'UnlikeSong' exception: " + e.Message);
+                Log.Message("'UnlikeSong' exception: " + e.ToString());
+            }
+        }
+
+        internal async static Task AppendQueue(string song_id)
+        {
+            try
+            {
+                if (song_id != "")
+                {
+                    Master.client.DefaultRequestHeaders.Clear();
+                    Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                    var response = await Master.client.PostAsync("https://api.spotify.com/v1/me/player/queue?uri=spotify%3Atrack%3A" + song_id, new StringContent(""));
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Log.Message("Appended song to queue: " + song_id);
+                    }
+                    else
+                    {
+                        if (response.StatusCode == HttpStatusCode.NotFound)
+                        {
+                            if (last_device_id != null)
+                            {
+                                Log.Message("Spotify has disconnected the player from the API due to inactivity. Attempting reconnection");
+                                await SetUserDevice(last_device_id);
+                                await Task.Delay(refresh_delay);
+                                await AppendQueue(song_id);
+                            }
+                        }
+                        Log.Message("'AppendQueue' Error: " + response.StatusCode.ToString());
+                        Log.Message(response.ReasonPhrase);
+                    }
+                }
+                else
+                {
+                    Log.Message("Attempted to append song to queue, but no song id was found");
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message("'AppendQueue' exception: " + e.ToString());
+            }
+        }
+
+        internal async static Task GetRecentTracksMain(string variable)
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                var response = await Master.client.GetAsync("https://api.spotify.com/v1/me/player/recently-played?limit=50");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var serializer = new JavaScriptSerializer();
+                    Classes.RecentTracks.Root data = serializer.Deserialize<Classes.RecentTracks.Root>(await response.Content.ReadAsStringAsync());
+
+                    List<string> tracks = new List<string>();
+                    foreach (Classes.RecentTracks.Item item in data.items)
+                    {
+                        if (tracks.IndexOf(item.track.id) <= -1)
+                        {
+                            // Stop multiple songs appearing in the list
+                            tracks.Add(item.track.id);
+
+                            List<string> artists_list = new List<string>();
+                            foreach (Classes.RecentTracks.Artist artist in item.track.artists)
+                            {
+                                artists_list.Add(artist.name);
+                            };
+                            string artists = string.Join(", ", artists_list);
+
+                            // Download text for title + author
+                            string[] title_image = Image.DrawText(item.track.name, new Font("Arial", 19, FontStyle.Bold), Color.White, ColorTranslator.FromHtml("#242424"));
+                            string[] artist_image = Image.DrawText(artists, new Font("Arial", 14, FontStyle.Regular), ColorTranslator.FromHtml("#828282"), ColorTranslator.FromHtml("#242424"));
+
+                            Master.callback.Invoke("ArmaSpotifyController", "append_grid",
+                                string.Format("[\"{0}\",\"{1}\",\"{2}\",\"{3}\",[\"{4}\",{5},{6}],[\"{7}\",{8},{9}]]",
+                                    variable,
+                                    item.track.id,
+                                    "track",
+                                    item.track.album.images[item.track.album.images.FindIndex(a => a.height == 300 && a.width == 300)].url.Remove(0, 18),
+                                    title_image[0],
+                                    title_image[1],
+                                    title_image[2],
+                                    artist_image[0],
+                                    artist_image[1],
+                                    artist_image[2]
+                                )
+                            );
+                        }
+                    }
+                }
+                else
+                {
+                    Log.Message("'GetRecentTracks' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message("'GetRecentTracks' exception: " + e.ToString());
+            }
+        }
+
+        internal async static Task LoadPlaylist(string variable, string playlist_id, int offset = 0)
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                var response = await Master.client.GetAsync("https://api.spotify.com/v1/playlists/" + playlist_id + "?limit=50&offset=" + offset.ToString() + "&market=" + Master.client_country);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var serializer = new JavaScriptSerializer();
+                    Classes.PlaylistItems.Root data = serializer.Deserialize<Classes.PlaylistItems.Root>(await response.Content.ReadAsStringAsync());
+
+                    List<string> tracks = new List<string>();
+                    foreach (Classes.PlaylistItems.Item item in data.tracks.items)
+                    {
+                        List<string> artists_list = new List<string>();
+                        foreach (Classes.PlaylistItems.Artist artist in item.track.artists)
+                        {
+                            artists_list.Add(artist.name);
+                        };
+                        string artists = string.Join(", ", artists_list);
+
+                        // Download text for title + author
+                        string[] title_image = Image.DrawText(item.track.name, new Font("Arial", 19, FontStyle.Bold), Color.White, ColorTranslator.FromHtml("#242424"));
+                        string[] artist_image = Image.DrawText(artists, new Font("Arial", 19, FontStyle.Regular), Color.White, ColorTranslator.FromHtml("#242424"));
+                        string[] album_image = Image.DrawText(item.track.album.name, new Font("Arial", 19, FontStyle.Regular), Color.White, ColorTranslator.FromHtml("#242424"));
+
+                        Master.callback.Invoke("ArmaSpotifyController", "append_textlist_playlist",
+                            string.Format("[\"{0}\",\"{1}\",[\"{2}\",{3},{4}],[\"{5}\",{6},{7}],[\"{8}\",{9},{10}],\"{11}\",\"{12}\",{13},{14}]",
+                                variable,
+                                data.id,
+                                title_image[0],
+                                title_image[1],
+                                title_image[2],
+                                artist_image[0],
+                                artist_image[1],
+                                artist_image[2],
+                                album_image[0],
+                                album_image[1],
+                                album_image[2],
+                                item.track.album.id,
+                                item.track.uri,
+                                data.tracks.total,
+                                data.tracks.offset
+                            )
+                        );
+                    }
+                }
+                else
+                {
+                    Log.Message("'GetRecentTracks' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message("'GetRecentTracks' exception: " + e.ToString());
+            }
+        }
+
+        internal async static Task GetLikedTracksMain(string variable, int offset = 0)
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                var response = await Master.client.GetAsync("https://api.spotify.com/v1/me/tracks?limit=50&offset=" + offset.ToString());
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var serializer = new JavaScriptSerializer();
+                    Classes.LikedTrack.Root data = serializer.Deserialize<Classes.LikedTrack.Root>(await response.Content.ReadAsStringAsync());
+
+                    List<string> tracks = new List<string>();
+                    foreach (Classes.LikedTrack.Item item in data.items)
+                    {
+                        List<string> artists_list = new List<string>();
+                        foreach (Classes.LikedTrack.Artist artist in item.track.artists)
+                        {
+                            artists_list.Add(artist.name);
+                        };
+                        string artists = string.Join(", ", artists_list);
+
+                        // Download text for title + author
+                        string[] title_image = Image.DrawText(item.track.name, new Font("Arial", 19, FontStyle.Bold), Color.White, ColorTranslator.FromHtml("#242424"));
+                        string[] artist_image = Image.DrawText(artists, new Font("Arial", 19, FontStyle.Regular), Color.White, ColorTranslator.FromHtml("#242424"));
+                        string[] album_image = Image.DrawText(item.track.album.name, new Font("Arial", 19, FontStyle.Regular), Color.White, ColorTranslator.FromHtml("#242424"));
+
+                        Master.callback.Invoke("ArmaSpotifyController", "append_textlist_liked",
+                            string.Format("[\"{0}\",\"{1}\",[\"{2}\",{3},{4}],[\"{5}\",{6},{7}],[\"{8}\",{9},{10}],\"{11}\",\"{12}\",{13},{14}]",
+                                variable,
+                                item.track.id,
+                                title_image[0],
+                                title_image[1],
+                                title_image[2],
+                                artist_image[0],
+                                artist_image[1],
+                                artist_image[2],
+                                album_image[0],
+                                album_image[1],
+                                album_image[2],
+                                item.track.album.id,
+                                item.track.uri,
+                                data.total,
+                                data.offset
+                            )
+                        );
+                    }
+                }
+                else
+                {
+                    Log.Message("'GetRecentTracks' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message("'GetRecentTracks' exception: " + e.ToString());
+            }
+        }
+
+        internal async static Task GetRecentTracks(string variable, int limit = 10)
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                var response = await Master.client.GetAsync("https://api.spotify.com/v1/me/player/recently-played?limit=50");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var serializer = new JavaScriptSerializer();
+                    Classes.RecentTracks.Root data = serializer.Deserialize<Classes.RecentTracks.Root>(await response.Content.ReadAsStringAsync());
+
+                    List<string> tracks = new List<string>();
+                    foreach (Classes.RecentTracks.Item item in data.items)
+                    {
+                        if (tracks.IndexOf(item.track.id) <= -1)
+                        {
+                            // Stop multiple songs appearing in the list
+                            tracks.Add(item.track.id);
+
+                            List<string> artists_list = new List<string>();
+                            foreach (Classes.RecentTracks.Artist artist in item.track.artists)
+                            {
+                                artists_list.Add(artist.name);
+                            };
+                            string artists = string.Join(", ", artists_list);
+
+                            // Download text for title + author
+                            string[] title_image = Image.DrawText(item.track.name, new Font("Arial", 19, FontStyle.Bold), Color.White, ColorTranslator.FromHtml("#242424"));
+                            string[] artist_image = Image.DrawText(artists, new Font("Arial", 14, FontStyle.Regular), ColorTranslator.FromHtml("#828282"), ColorTranslator.FromHtml("#242424"));
+
+                            Master.callback.Invoke("ArmaSpotifyController", "append_list",
+                                string.Format("[\"{0}\",{1},\"{2}\",\"{3}\",\"{4}\",[\"{5}\",{6},{7}],[\"{8}\",{9},{10}]]",
+                                    variable,
+                                    limit,
+                                    "track",
+                                    item.track.id,
+                                    item.track.album.images[item.track.album.images.FindIndex(a => a.height == 300 && a.width == 300)].url.Remove(0, 18),
+                                    title_image[0],
+                                    title_image[1],
+                                    title_image[2],
+                                    artist_image[0],
+                                    artist_image[1],
+                                    artist_image[2]
+                                )
+                            );
+                        }
+                    }
+                }
+                else
+                {
+                    Log.Message("'GetRecentTracks' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message("'GetRecentTracks' exception: " + e.ToString());
+            }
+        }
+
+        internal async static Task GetNewReleases(string variable, int limit = 10)
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                var response = await Master.client.GetAsync("https://api.spotify.com/v1/browse/new-releases?limit=20&country=" + Master.client_country);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var serializer = new JavaScriptSerializer();
+                    Classes.NewReleases.Root data = serializer.Deserialize<Classes.NewReleases.Root>(await response.Content.ReadAsStringAsync());
+
+                    foreach (Classes.NewReleases.Item item in data.albums.items)
+                    {
+                        List<string> artists_list = new List<string>();
+                        foreach (Classes.NewReleases.Artist artist in item.artists)
+                        {
+                            artists_list.Add(artist.name);
+                        };
+                        string artists = string.Join(", ", artists_list);
+
+                        // Download text for title + author
+                        string[] title_image = Image.DrawText(item.name, new Font("Arial", 19, FontStyle.Bold), Color.White, ColorTranslator.FromHtml("#242424"));
+                        string[] artist_image = Image.DrawText(artists, new Font("Arial", 14, FontStyle.Regular), ColorTranslator.FromHtml("#828282"), ColorTranslator.FromHtml("#242424"));
+
+                        Master.callback.Invoke("ArmaSpotifyController", "append_list",
+                            string.Format("[\"{0}\",{1},\"{2}\",\"{3}\",\"{4}\",[\"{5}\",{6},{7}],[\"{8}\",{9},{10}]]",
+                                variable,
+                                limit,
+                                "album",
+                                item.id,
+                                item.images[item.images.FindIndex(a => a.height == 300 && a.width == 300)].url.Remove(0, 18),
+                                title_image[0],
+                                title_image[1],
+                                title_image[2],
+                                artist_image[0],
+                                artist_image[1],
+                                artist_image[2]
+                            )
+                        );
+                    }
+                }
+                else
+                {
+                    Log.Message("'GetNewReleases' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message("'GetNewReleases' exception: " + e.ToString());
+            }
+        }
+
+        internal async static Task GetFeaturedPlaylists(string variable, int limit = 10)
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                var response = await Master.client.GetAsync("https://api.spotify.com/v1/browse/featured-playlists?country=" + Master.client_country + "&limit=20");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var serializer = new JavaScriptSerializer();
+                    Classes.FeaturedPlaylists.Root data = serializer.Deserialize<Classes.FeaturedPlaylists.Root>(await response.Content.ReadAsStringAsync());
+
+                    foreach (Classes.FeaturedPlaylists.Item item in data.playlists.items)
+                    {
+
+                        // Download text for title + author
+                        string[] title_image = Image.DrawText(item.name, new Font("Arial", 19, FontStyle.Bold), Color.White, ColorTranslator.FromHtml("#242424"), true);
+                        string[] artist_image = Image.DrawText(item.description, new Font("Arial", 14, FontStyle.Regular), ColorTranslator.FromHtml("#828282"), ColorTranslator.FromHtml("#242424"), true);
+
+                        Master.callback.Invoke("ArmaSpotifyController", "append_list",
+                            string.Format("[\"{0}\",{1},\"{2}\",\"{3}\",\"{4}\",[\"{5}\",{6},{7}],[\"{8}\",{9},{10}]]",
+                                variable,
+                                limit,
+                                "playlist",
+                                item.id,
+                                item.images[0].url.Remove(0, 18),
+                                title_image[0],
+                                title_image[1],
+                                title_image[2],
+                                artist_image[0],
+                                artist_image[1],
+                                artist_image[2]
+                            )
+                        );
+                    }
+                }
+                else
+                {
+                    Log.Message("'GetFeaturedPlaylists' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message("'GetFeaturedPlaylists' exception: " + e.ToString());
+            }
+        }
+
+        internal async static Task GetUsersPlaylists()
+        {
+            try
+            {
+                Master.client.DefaultRequestHeaders.Clear();
+                Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
+
+                var response = await Master.client.GetAsync("https://api.spotify.com/v1/me/playlists?limit=50");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var serializer = new JavaScriptSerializer();
+                    Classes.UserPlaylists.Root data = serializer.Deserialize<Classes.UserPlaylists.Root>(await response.Content.ReadAsStringAsync());
+
+                    foreach (Classes.UserPlaylists.Item item in data.items)
+                    {
+                        // Download text for title + author
+                        string[] title_image = Image.DrawText(item.name, new Font("Arial", 19, FontStyle.Bold), Color.White, ColorTranslator.FromHtml("#1A1A1A"));
+                        
+                        Master.callback.Invoke("ArmaSpotifyController", "append_playlist",
+                            string.Format("[\"{0}\",{1},{2},\"{3}\"]",
+                                title_image[0],
+                                title_image[1],
+                                title_image[2],
+                                item.id
+                            )
+                        );
+                    }
+                }
+                else
+                {
+                    Log.Message("'GetUsersPlaylists' Error: " + response.StatusCode.ToString());
+                    Log.Message(response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message("'GetUsersPlaylists' exception: " + e.ToString());
+            }
+        }
+
+        internal async static Task ShowNotification(string image_url, string title, string author)
+        {
+            try
+            {
+                string image_location = await Image.DownloadImage("https://i.scdn.co/" + image_url);
+                string[] title_image = Image.DrawText(title, new Font("Arial", 19, FontStyle.Bold), Color.White, ColorTranslator.FromHtml("#2B2B2B"));
+                string[] artist_image = Image.DrawText(author, new Font("Arial", 12, FontStyle.Regular), ColorTranslator.FromHtml("#ABABAB"), ColorTranslator.FromHtml("#2B2B2B"));
+
+                Master.callback.Invoke("ArmaSpotifyController", "show_notification_song",
+                    string.Format
+                    (
+                        "[\"{0}\",[\"{1}\",{2},{3}],[\"{4}\",{5},{6}]]",
+                        image_location,
+                        title_image[0],
+                        title_image[1],
+                        title_image[2],
+                        artist_image[0],
+                        artist_image[1],
+                        artist_image[2]
+                     )
+                );
+            }
+            catch (Exception e)
+            {
+                Log.Message("'ShowNotification' exception: " + e.ToString());
             }
         }
 
@@ -911,6 +1614,11 @@ namespace ArmaSpotifyController
         {
             try
             {
+                is_playing = false;
+
+                // Refresh token if it has expired
+                await RefeshData(false);
+
                 Master.client.DefaultRequestHeaders.Clear();
                 Master.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Master.client_access_token);
 
@@ -918,70 +1626,149 @@ namespace ArmaSpotifyController
 
                 if (response.IsSuccessStatusCode)
                 {
-                    string data = await response.Content.ReadAsStringAsync();
+                    string @data = await response.Content.ReadAsStringAsync();
 
                     if (data.Length > 0)
                     {
-                        var serializer = new JavaScriptSerializer();
-                        Classes.UserPlayback.Root current_data = serializer.Deserialize<Classes.UserPlayback.Root>(data);
-
-                        // Set device id for resyncing device with Spotify API
-                        if (current_data.device.id != null)
+                        // Check if this is a private session
+                        if (!data.Contains("\"is_private_session\" : true"))
                         {
-                            last_device_id = current_data.device.id;
-                        }
+                            if (!data.Contains("\"item\" : null"))
+                            {                                
+                                var serializer = new JavaScriptSerializer();
+                                Classes.UserPlayback.Root current_data = serializer.Deserialize<Classes.UserPlayback.Root>(data);
 
-                        bool playing = current_data.is_playing;
-                        bool nsfw = current_data.item.@explicit;
-                        bool shuffle = current_data.shuffle_state;
+                                // Set device id for resyncing device with Spotify API
+                                if (current_data.device.id != null)
+                                {
+                                    last_device_id = current_data.device.id;
+                                }
 
-                        int volume = current_data.device.volume_percent;
-                        int length = current_data.item.duration_ms;
-                        int progress = current_data.progress_ms;
+                                bool playing = is_playing = current_data.is_playing;
+                                bool nsfw = current_data.item.@explicit;
+                                bool shuffle = current_data.shuffle_state;
 
-                        string song_id = current_data.item.id;
-                        string repeat = current_data.repeat_state;
-                        string song = current_data.item.name
-                            .Replace('’', '\'');
+                                int volume = current_data.device.volume_percent;
+                                int length = current_data.item.duration_ms;
+                                int progress = current_data.progress_ms;
 
-                        List<string> artists_list = new List<string>();
-                        foreach (Classes.UserPlayback.Artist artist in current_data.item.artists)
-                        {
-                            artists_list.Add(artist.name);
-                        };
-                        string artists = string.Join(", ", artists_list);
+                                string repeat = current_data.repeat_state;
+                                string song = current_data.item.name
+                                        .Replace("\"", "\"\"");
 
-                        string image = "";
-                        foreach (Classes.UserPlayback.Image image_item in current_data.item.album.images)
-                        {
-                            if (image_item.height == 64 && image_item.width == 64)
-                            {
-                                image = image_item.url.Remove(0, 18);
+                                List<string> artists_list = new List<string>();
+                                foreach (Classes.UserPlayback.Artist artist in current_data.item.artists)
+                                {
+                                    artists_list.Add(artist.name);
+                                };
+                                string artists = string.Join(", ", artists_list);
+
+                                if (!current_data.item.is_local)
+                                {
+                                    string song_id = current_data.item.id;
+
+                                    string image = "";
+                                    foreach (Classes.UserPlayback.Image image_item in current_data.item.album.images)
+                                    {
+                                        if (image_item.height == 64 && image_item.width == 64)
+                                        {
+                                            image = image_item.url.Remove(0, 18);
+                                        }
+                                    };
+
+                                    await Image.DownloadImage(@"https://i.scdn.co/" + image);
+
+                                    string callback_data = string.Format("[{0},{1},{2},{3},\"{4}\",{5},{6},\"{7}\",\"{8}\",{9}]", playing, nsfw, length, progress, image, volume, shuffle, repeat, song_id, false);
+                                    Master.callback.Invoke("ArmaSpotifyController", "spotify_fnc_update_display", callback_data);
+
+                                    // Download text for title + author
+                                    string[] title_image = Image.DrawText(current_data.item.name, new Font("Arial", 19, FontStyle.Bold), Color.White, ColorTranslator.FromHtml("#2B2B2B"));
+                                    string[] artist_image = Image.DrawText(artists, new Font("Arial", 12, FontStyle.Regular), ColorTranslator.FromHtml("#ABABAB"), ColorTranslator.FromHtml("#2B2B2B"));
+
+                                    Master.callback.Invoke("ArmaSpotifyController", "spotify_fnc_update_song_info",
+                                        string.Format
+                                        (
+                                            "[[\"{0}\",{1},{2}],[\"{3}\",{4},{5}]]",
+                                            title_image[0],
+                                            title_image[1],
+                                            title_image[2],
+                                            artist_image[0],
+                                            artist_image[1],
+                                            artist_image[2]
+                                         )
+                                    );
+
+                                    if (current_data.is_playing && last_song_id != current_data.item.id)
+                                    {
+                                        await ShowNotification(image, current_data.item.name, artists);
+                                        last_song_id = current_data.item.id;
+                                    }
+                                }
+                                else
+                                {
+                                    // This is a local file - ignore images and stuff like that
+
+                                    string callback_data = string.Format("[{0},{1},{2},{3},\"{4}\",{5},{6},\"{7}\",\"{8}\",{9}]", playing, nsfw, length, progress, "", volume, shuffle, repeat, "", true);
+                                    Master.callback.Invoke("ArmaSpotifyController", "spotify_fnc_update_display", callback_data);
+
+                                    // Download text for title + author
+                                    string[] title_image = Image.DrawText(current_data.item.name, new Font("Arial", 19, FontStyle.Bold), Color.White, ColorTranslator.FromHtml("#2B2B2B"));
+                                    string[] artist_image = Image.DrawText(artists, new Font("Arial", 12, FontStyle.Regular), ColorTranslator.FromHtml("#ABABAB"), ColorTranslator.FromHtml("#2B2B2B"));
+
+                                    Master.callback.Invoke("ArmaSpotifyController", "spotify_fnc_update_song_info",
+                                        string.Format
+                                        (
+                                            "[[\"{0}\",{1},{2}],[\"{3}\",{4},{5}]]",
+                                            title_image[0],
+                                            title_image[1],
+                                            title_image[2],
+                                            artist_image[0],
+                                            artist_image[1],
+                                            artist_image[2]
+                                         )
+                                    );
+
+                                    if (current_data.is_playing && last_song_id != current_data.item.id)
+                                    {
+                                        await ShowNotification("", current_data.item.name, artists);
+                                        last_song_id = current_data.item.id;
+                                    }
+                                }
                             }
-                        };
+                            else
+                            {
+                                // No song is playing
+                                var serializer = new JavaScriptSerializer();
+                                Classes.NoSong.Root current_data = serializer.Deserialize<Classes.NoSong.Root>(data);
 
-                        string callback_data = string.Format("[{0},{1},{2},{3},\"{4}\",\"{5}\",\"{6}\",{7},{8},\"{9}\",\"{10}\"]", playing, nsfw, length, progress, song, artists, image, volume, shuffle, repeat, song_id);
-                        Master.callback.Invoke("ArmaSpotifyController", "spotify_fnc_update_display", callback_data);
+                                bool playing = current_data.is_playing;
+                                bool nsfw = false;
+                                bool shuffle = current_data.shuffle_state;
 
-                        // Download text for title + author
-                        string[] title_image = Image.DrawText(current_data.item.name, new Font("Arial", 19, FontStyle.Bold), Color.White, ColorTranslator.FromHtml("#2B2B2B"));
-                        string[] artist_image = Image.DrawText(artists, new Font("Arial", 12, FontStyle.Regular), ColorTranslator.FromHtml("#ABABAB"), ColorTranslator.FromHtml("#2B2B2B"));
+                                int volume = current_data.device.volume_percent;
+                                int length = 0;
+                                int progress = 0;
 
-                        Master.callback.Invoke("ArmaSpotifyController", "spotify_fnc_update_song_info",
-                            string.Format
-                            (
-                                "[[\"{0}\",{1},{2}],[\"{3}\",{4},{5}]]",
-                                title_image[0],
-                                title_image[1],
-                                title_image[2],
-                                artist_image[0],
-                                artist_image[1],
-                                artist_image[2]
-                             )
-                        );
+                                string image = "";
+                                string repeat = current_data.repeat_state;
+                                string song_id = "";
+
+                                
+                                string callback_data = string.Format("[{0},{1},{2},{3},\"{4}\",{5},{6},\"{7}\",\"{8}\"]", playing, nsfw, length, progress, image, volume, shuffle, repeat, song_id);
+                                Master.callback.Invoke("ArmaSpotifyController", "spotify_fnc_update_display", callback_data);
+
+                                Master.callback.Invoke("ArmaSpotifyController", "spotify_fnc_update_song_info", "[[],[]]");
+                            }
+                        }
+                        else
+                        {
+                            // Private session found
+                            Master.callback.Invoke("ArmaSpotifyController", "private_session", "");
+                        }
                     }
                     else
                     {
+                        // No devices found
                         Master.callback.Invoke("ArmaSpotifyController", "device_required", "");
                     }
                 }
@@ -993,16 +1780,21 @@ namespace ArmaSpotifyController
             }
             catch (Exception e)
             {
-                Log.Message("'RequestInfo' exception: " + e.Message);
+                Log.Message("'RequestInfo' exception: " + e.ToString());
             }
         }
+                
     }
 
     public class Master
     {
         // Predefined version information + author name
-        internal static readonly string version_info = "ASJ DLL - VER 0.0.1 - Asaayu";
+        internal static readonly string version_info = "AASP DLL - VER 0.0.1 - Asaayu";
         internal static readonly string app_client_id = "8cf42361877d48de877925a8c1dc747d";
+
+        // Legal stuff
+        internal static string legal_update_file = "https://raw.githubusercontent.com/Asaayu/data-testing/main/testing.md";
+        internal static string legal_update;
 
         // Variables for access & refresh tokens
         internal static string client_refresh_token;
@@ -1015,7 +1807,8 @@ namespace ArmaSpotifyController
         internal static string client_country;
 
         // HttpClient for sending/receiving data from Spotify
-        internal static readonly HttpClient client = new HttpClient();
+        internal static readonly HttpClientHandler client_handler = new HttpClientHandler{UseDefaultCredentials = true};
+        internal static readonly HttpClient client = new HttpClient(client_handler);
 
         // Variables containing important information
         internal static string verifier_string;
@@ -1053,9 +1846,6 @@ namespace ArmaSpotifyController
             // Setup image saving
             Image.Setup();
 
-            // Save image directory to variable - includes backslash so be aware of that!
-            callback.Invoke("ArmaSpotifyController", "setVariable", "[\"missionnamespace\", \"aasp_image_location\", \""+ Image.data_directory + @"\" +"\", false]");
-
             // Generate a new state key
             RNGCryptoServiceProvider generator = new RNGCryptoServiceProvider();
 
@@ -1067,7 +1857,10 @@ namespace ArmaSpotifyController
 
             // Convert to int 32
             state = BitConverter.ToInt32(data, 0);
-            
+
+            // Get current version
+            legal_update = Legal.GetLastUpdate().Result;
+
             // Auto output the version information to the report file
             output.Append(version_info);
         }
@@ -1114,7 +1907,7 @@ namespace ArmaSpotifyController
                             }
                             catch (Exception e)
                             {
-                                Log.Message("SetVolume Request Error: " + e.Message);
+                                Log.Message("SetVolume Request Error: " + e.ToString());
                                 Log.Message(parameters[2]);
                                 output.Append("false");
                             }
@@ -1180,7 +1973,7 @@ namespace ArmaSpotifyController
                             }
                             catch (Exception e)
                             {
-                                Log.Message("Seek Request Error: " + e.Message);
+                                Log.Message("Seek Request Error: " + e.ToString());
                                 Log.Message(parameters[2]);
                                 output.Append("false");
                             }
@@ -1198,12 +1991,6 @@ namespace ArmaSpotifyController
                             output.Append("true");
                             break;
 
-                        // REFRESH_TOKEN: Sends a request to refresh the users tokens
-                        case "refresh_token":
-                            await Request.RefeshData(false);
-                            output.Append("true");
-                            break;
-
                         // REQUEST_INFO: Request updated info from Spotify
                         case "request_info":
                             await Request.RequestInfo();
@@ -1213,6 +2000,145 @@ namespace ArmaSpotifyController
                         // PREMIUM: Returns if the user who has authorised has an active Spotify Premium subscription
                         case "premium":
                             output.Append(client_premium.ToString().ToLower());
+                            break;
+
+                        // APPEND_TRACK: Appends a track to the players queue
+                        case "append_track":
+                            await Request.AppendQueue(parameters[2]);
+                            output.Append("true");
+                            break;
+                            
+                        // PLAY_TRACK: Plays a track using the track ID
+                        case "play_track":
+                            await Request.PlayTrack(parameters[2]);
+                            output.Append("true");
+                            break;
+                            
+                        // PLAY_ALBUM: Plays an album using the album ID and start index
+                        case "play_album":
+                            try
+                            {
+                                if (parameters.Length >= 4)
+                                {
+                                    await Request.PlayAlbum(parameters[2], int.Parse(parameters[3]));
+                                }
+                                else
+                                {
+                                    await Request.PlayAlbum(parameters[2]);
+                                }
+                                output.Append("true");
+                            }
+                            catch (Exception e)
+                            {
+                                Log.Message("Play album request Error: " + e.ToString());
+                                Log.Message(parameters[2]);
+                                output.Append("false");
+                            }
+                            break;
+                            
+                        // PLAY_PLAYLIST: Plays a playlist using the playlist ID and start index
+                        case "play_playlist":
+                            try
+                            {
+                                if (parameters.Length >= 4)
+                                {
+                                    await Request.PlayPlaylist(parameters[2], int.Parse(parameters[3]));
+                                }
+                                else
+                                {
+                                    await Request.PlayPlaylist(parameters[2]);
+                                }
+                                output.Append("true");
+                            }
+                            catch (Exception e)
+                            {
+                                Log.Message("Play album request Error: " + e.ToString());
+                                Log.Message(parameters[2]);
+                                output.Append("false");
+                            }
+                            break;
+
+                        // GET_RECENT: Get recent tacks played for the home page list
+                        case "get_recent":
+                            await Request.GetRecentTracks(parameters[2]);
+                            output.Append("true");
+                            break;
+                            
+                        // GET_RECENT_MAIN: Get recent tacks played for the home page list, for the main recently played section
+                        case "get_recent_main":
+                            await Request.GetRecentTracksMain(parameters[2]);
+                            output.Append("true");
+                            break;
+                            
+                        // GET_LIKED_MAIN: Get liked playlist, then add to the liked song list.
+                        case "get_liked_main":
+                            try
+                            {
+                                if (parameters.Length >= 4)
+                                {
+                                    await Request.GetLikedTracksMain(parameters[2], int.Parse(parameters[3]));
+                                }
+                                else
+                                {
+                                    await Request.GetLikedTracksMain(parameters[2]);
+                                }
+                                output.Append("true");
+                            }
+                            catch (Exception e)
+                            {
+                                Log.Message("Get liked main request Error: " + e.ToString());
+                                Log.Message(parameters[2]);
+                                output.Append("false");
+                            }
+                            break;
+                            
+                        // GET_RELEASES: Get new releases from Spotify
+                        case "get_releases":
+                            await Request.GetNewReleases(parameters[2]);
+                            output.Append("true");
+                            break;
+                            
+                        // GET_FEATURED: Get featured playlists
+                        case "get_featured":
+                            await Request.GetFeaturedPlaylists(parameters[2]);
+                            output.Append("true");
+                            break;
+                            
+                        // REQUEST_PLAYLISTS: Get users playlists
+                        case "request_playlists":
+                            await Request.GetUsersPlaylists();
+                            output.Append("true");
+                            break;
+
+                        // LOAD_PLAYLIST: Loads a playlist and shows it in the GUI
+                        case "load_playlist":
+                            if (parameters.Length >= 5)
+                            {
+                                await Request.LoadPlaylist(parameters[2], parameters[3], int.Parse(parameters[3]));
+                            }
+                            else
+                            {
+                                await Request.LoadPlaylist(parameters[2], parameters[3]);
+                            }                            
+                            output.Append("true");
+                            break;
+
+                        // TRACK: This opens the track in the spotify player
+                        case "track":
+                            Process.Start("https://open.spotify.com/track/" + parameters[2]);
+                            output.Append("true");
+                            break;
+
+                        // ARTIST: This opens the artist in the spotify player
+                        case "artist":
+                            Process.Start("https://open.spotify.com/artist/" + parameters[2]);
+                            output.Append("true");
+                            break;
+
+                        // ALBUM: This opens the album in the spotify player
+                        case "album":
+                            Process.Start("https://open.spotify.com/album/" + parameters[2]);
+                            output.Append("true");
                             break;
 
                         // DEFAULT: Show version information
@@ -1274,7 +2200,7 @@ namespace ArmaSpotifyController
                                     Log.SaveToken();
 
                                     // Set the refresh timer
-                                    client_refresh_time = DateTime.Now.AddSeconds(3000);
+                                    client_refresh_time = DateTime.Now.AddSeconds(3300);
 
                                     // Callback to game to let it know user is authorised
                                     callback.Invoke("ArmaSpotifyController", "setVariable", "[\"missionnamespace\", \"aasp_authorised\", true, false]");
@@ -1422,6 +2348,21 @@ namespace ArmaSpotifyController
                     case "github":
                         Process.Start("https://github.com/Asaayu/Arma-Spotify-Player");
                         break;
+                        
+                    // OPEN_SPOTIFY: Open the open.spotify.com webpage
+                    case "open_spotify":
+                        Process.Start("https://open.spotify.com");
+                        break;
+                        
+                    // REVOKE: Open the webpage for users to revoke access to their Spotify account
+                    case "revoke":
+                        Process.Start("https://www.spotify.com/account/apps/");
+                        break;
+                        
+                    // LEGAL_UPDATE: Get the EULA & Privacy Policy last update time
+                    case "legal_update":
+                        output.Append(legal_update);
+                        break;
 
                     // DEFAULT: Show version information
                     default:
@@ -1439,6 +2380,91 @@ namespace ArmaSpotifyController
             public class Root
             {
                 public List<bool> liked { get; set; }
+            }
+        }
+
+        internal class LikedTrack
+        {
+            public class ExternalUrls
+            {
+                public string spotify { get; set; }
+            }
+
+            public class Artist
+            {
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public string name { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class Image
+            {
+                public int height { get; set; }
+                public string url { get; set; }
+                public int width { get; set; }
+            }
+
+            public class Album
+            {
+                public string album_type { get; set; }
+                public List<Artist> artists { get; set; }
+                public List<string> available_markets { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public List<Image> images { get; set; }
+                public string name { get; set; }
+                public string release_date { get; set; }
+                public string release_date_precision { get; set; }
+                public int total_tracks { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class ExternalIds
+            {
+                public string isrc { get; set; }
+            }
+
+            public class Track
+            {
+                public Album album { get; set; }
+                public List<Artist> artists { get; set; }
+                public List<string> available_markets { get; set; }
+                public int disc_number { get; set; }
+                public int duration_ms { get; set; }
+                public bool @explicit { get; set; }
+                public ExternalIds external_ids { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public bool is_local { get; set; }
+                public string name { get; set; }
+                public int popularity { get; set; }
+                public string preview_url { get; set; }
+                public int track_number { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class Item
+            {
+                public DateTime added_at { get; set; }
+                public Track track { get; set; }
+            }
+
+            public class Root
+            {
+                public string href { get; set; }
+                public List<Item> items { get; set; }
+                public int limit { get; set; }
+                public string next { get; set; }
+                public int offset { get; set; }
+                public object previous { get; set; }
+                public int total { get; set; }
             }
         }
 
@@ -1600,6 +2626,72 @@ namespace ArmaSpotifyController
             }
         }
 
+        internal class FeaturedPlaylists
+        {
+            public class ExternalUrls
+            {
+                public string spotify { get; set; }
+            }
+
+            public class Image
+            {
+                public object height { get; set; }
+                public string url { get; set; }
+                public object width { get; set; }
+            }
+
+            public class Owner
+            {
+                public string display_name { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class Tracks
+            {
+                public string href { get; set; }
+                public int total { get; set; }
+            }
+
+            public class Item
+            {
+                public bool collaborative { get; set; }
+                public string description { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public List<Image> images { get; set; }
+                public string name { get; set; }
+                public Owner owner { get; set; }
+                public object primary_color { get; set; }
+                public object @public { get; set; }
+                public string snapshot_id { get; set; }
+                public Tracks tracks { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class Playlists
+            {
+                public string href { get; set; }
+                public List<Item> items { get; set; }
+                public int limit { get; set; }
+                public object next { get; set; }
+                public int offset { get; set; }
+                public object previous { get; set; }
+                public int total { get; set; }
+            }
+
+            public class Root
+            {
+                public string message { get; set; }
+                public Playlists playlists { get; set; }
+            }
+        }
+
         internal class RefreshToken
         {
             public class Root
@@ -1621,6 +2713,395 @@ namespace ArmaSpotifyController
                 public int expires_in { get; set; }
                 public string refresh_token { get; set; }
                 public string scope { get; set; }
+            }
+        }
+
+        internal class UserPlaylists
+        {
+            public class ExternalUrls
+            {
+                public string spotify { get; set; }
+            }
+
+            public class Image
+            {
+                public object height { get; set; }
+                public string url { get; set; }
+                public object width { get; set; }
+            }
+
+            public class Owner
+            {
+                public string display_name { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class Tracks
+            {
+                public string href { get; set; }
+                public int total { get; set; }
+            }
+
+            public class Item
+            {
+                public bool collaborative { get; set; }
+                public string description { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public List<Image> images { get; set; }
+                public string name { get; set; }
+                public Owner owner { get; set; }
+                public object primary_color { get; set; }
+                public bool @public { get; set; }
+                public string snapshot_id { get; set; }
+                public Tracks tracks { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class Root
+            {
+                public string href { get; set; }
+                public List<Item> items { get; set; }
+                public int limit { get; set; }
+                public object next { get; set; }
+                public int offset { get; set; }
+                public object previous { get; set; }
+                public int total { get; set; }
+            }
+        }
+
+        internal class NewReleases
+        {
+            public class ExternalUrls
+            {
+                public string spotify { get; set; }
+            }
+
+            public class Artist
+            {
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public string name { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class Image
+            {
+                public int height { get; set; }
+                public string url { get; set; }
+                public int width { get; set; }
+            }
+
+            public class Item
+            {
+                public string album_type { get; set; }
+                public List<Artist> artists { get; set; }
+                public List<string> available_markets { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public List<Image> images { get; set; }
+                public string name { get; set; }
+                public string release_date { get; set; }
+                public string release_date_precision { get; set; }
+                public int total_tracks { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class Albums
+            {
+                public string href { get; set; }
+                public List<Item> items { get; set; }
+                public int limit { get; set; }
+                public string next { get; set; }
+                public int offset { get; set; }
+                public object previous { get; set; }
+                public int total { get; set; }
+            }
+
+            public class Root
+            {
+                public Albums albums { get; set; }
+            }
+        }
+
+        internal class PlaylistItems
+        {
+            public class ExternalUrls
+            {
+                public string spotify { get; set; }
+            }
+
+            public class Followers
+            {
+                public object href { get; set; }
+                public int total { get; set; }
+            }
+
+            public class Image
+            {
+                public int height { get; set; }
+                public string url { get; set; }
+                public int width { get; set; }
+            }
+
+            public class Owner
+            {
+                public string display_name { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class AddedBy
+            {
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class Artist
+            {
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public string name { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class Album
+            {
+                public string album_type { get; set; }
+                public List<Artist> artists { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public List<Image> images { get; set; }
+                public string name { get; set; }
+                public string release_date { get; set; }
+                public string release_date_precision { get; set; }
+                public int total_tracks { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class ExternalIds
+            {
+                public string isrc { get; set; }
+            }
+
+            public class Track
+            {
+                public Album album { get; set; }
+                public List<Artist> artists { get; set; }
+                public int disc_number { get; set; }
+                public int duration_ms { get; set; }
+                public bool episode { get; set; }
+                public bool @explicit { get; set; }
+                public ExternalIds external_ids { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public bool is_local { get; set; }
+                public bool is_playable { get; set; }
+                public string name { get; set; }
+                public int popularity { get; set; }
+                public string preview_url { get; set; }
+                public bool track { get; set; }
+                public int track_number { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class VideoThumbnail
+            {
+                public object url { get; set; }
+            }
+
+            public class Item
+            {
+                public DateTime added_at { get; set; }
+                public AddedBy added_by { get; set; }
+                public bool is_local { get; set; }
+                public object primary_color { get; set; }
+                public Track track { get; set; }
+                public VideoThumbnail video_thumbnail { get; set; }
+            }
+
+            public class Tracks
+            {
+                public string href { get; set; }
+                public List<Item> items { get; set; }
+                public int limit { get; set; }
+                public object next { get; set; }
+                public int offset { get; set; }
+                public object previous { get; set; }
+                public int total { get; set; }
+            }
+
+            public class Root
+            {
+                public bool collaborative { get; set; }
+                public string description { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public Followers followers { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public List<Image> images { get; set; }
+                public string name { get; set; }
+                public Owner owner { get; set; }
+                public object primary_color { get; set; }
+                public bool @public { get; set; }
+                public string snapshot_id { get; set; }
+                public Tracks tracks { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+        }
+
+        internal class RecentTracks
+        {
+            public class ExternalUrls
+            {
+                public string spotify { get; set; }
+            }
+
+            public class Artist
+            {
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public string name { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class Image
+            {
+                public int height { get; set; }
+                public string url { get; set; }
+                public int width { get; set; }
+            }
+
+            public class Album
+            {
+                public string album_type { get; set; }
+                public List<Artist> artists { get; set; }
+                public List<string> available_markets { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public List<Image> images { get; set; }
+                public string name { get; set; }
+                public string release_date { get; set; }
+                public string release_date_precision { get; set; }
+                public int total_tracks { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class ExternalIds
+            {
+                public string isrc { get; set; }
+            }
+
+            public class Track
+            {
+                public Album album { get; set; }
+                public List<Artist> artists { get; set; }
+                public List<object> available_markets { get; set; }
+                public int disc_number { get; set; }
+                public int duration_ms { get; set; }
+                public bool @explicit { get; set; }
+                public ExternalIds external_ids { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public bool is_local { get; set; }
+                public bool is_playable { get; set; }
+                public string name { get; set; }
+                public int popularity { get; set; }
+                public string preview_url { get; set; }
+                public int track_number { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class Item
+            {
+                public Track track { get; set; }
+                public DateTime played_at { get; set; }
+                public object context { get; set; }
+            }
+
+            public class Cursors
+            {
+                public string after { get; set; }
+                public string before { get; set; }
+            }
+
+            public class Root
+            {
+                public List<Item> items { get; set; }
+                public string next { get; set; }
+                public Cursors cursors { get; set; }
+                public int limit { get; set; }
+                public string href { get; set; }
+            }
+        }
+
+        internal class NoSong
+        {
+            public class Device
+            {
+                public string id { get; set; }
+                public bool is_active { get; set; }
+                public bool is_private_session { get; set; }
+                public bool is_restricted { get; set; }
+                public string name { get; set; }
+                public string type { get; set; }
+                public int volume_percent { get; set; }
+            }
+
+            public class Disallows
+            {
+                public bool resuming { get; set; }
+                public bool seeking { get; set; }
+                public bool skipping_prev { get; set; }
+                public bool skipping_next { get; set; }
+            }
+
+            public class Actions
+            {
+                public Disallows disallows { get; set; }
+            }
+
+            public class Root
+            {
+                public Device device { get; set; }
+                public bool shuffle_state { get; set; }
+                public string repeat_state { get; set; }
+                public int timestamp { get; set; }
+                public object context { get; set; }
+                public int progress_ms { get; set; }
+                public object item { get; set; }
+                public string currently_playing_type { get; set; }
+                public Actions actions { get; set; }
+                public bool is_playing { get; set; }
             }
         }
     }
