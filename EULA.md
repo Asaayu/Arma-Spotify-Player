@@ -1,5 +1,3 @@
-Last updated: 7/12/2020
-
 **End-user license agreement**
 
 **License**
@@ -98,4 +96,5 @@ Discord: `Asaayu#1337`
 33. When we make changes to this EULA, we will force you to re-authenticate your Spotify account with this software and inform you of the date of the latest change to this EULA in order to provide you with prominent notice of these changes.
     Please, therefore, make sure you read any such notice carefully.
 
+ALL COPIES OF THIS SOFTWARE MUST CONTAIN THIS SOFTWARE END-USER LICENSE AGREEMENT, THE LICENSE, PRIVACY POLICEY, AND README.
 
