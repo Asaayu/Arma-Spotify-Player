@@ -15,4 +15,5 @@ With this licence you are free to adapt (i.e. modify, rework or update) and shar
 View a full version of the license at (bohemia.net/community/licenses/arma-public-license-nd)[https://www.bohemia.net/community/licenses/arma-public-license-nd].
 
 An adaption to this license is avaliable upon request for your needs, but may be denied due to security, legal or any other reason at the discretion of Asaayu.
+
 ALL COPIES OF THIS SOFTWARE MUST CONTAIN THIS LICENSE, THE SOFTWARE END-USER LICENSE AGREEMENT, PRIVACY POLICEY, AND README.
