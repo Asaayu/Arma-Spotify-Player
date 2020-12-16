@@ -1,5 +1,3 @@
-Last updated: 16/12/2020
-
 **End-user license agreement**
 
 **License**
