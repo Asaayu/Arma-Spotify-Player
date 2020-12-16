@@ -12,6 +12,14 @@ if !LOADED then
 	uinamespace setVariable ['aasp_spotify_preloaded', true];
 };
 
+private _legal_shown = profileNamespace getVariable ["aasp_legal_shown", false];
+if !_legal_shown then
+{
+	["By authorising your Spotify account to Asaayu's Arma Spotify Player you are agreeing to the <a href='https://github.com/Asaayu/Arma-Spotify-Player/blob/main/EULA.md'>End User License Agreement</a> and <a href='https://github.com/Asaayu/Arma-Spotify-Player/blob/main/PRIVACY-POLICY.md'>Privacy Policy</a>.<br/>If you do not want to agree to them <a href='https://steamcommunity.com/id/asaayu/'>unsubscribe from this mod on the Steam Workshop</a>.", "Important Information", "I understand", false] spawn BIS_fnc_guiMessage;
+
+	profileNamespace setVariable ["aasp_legal_shown", true];
+};
+
 (_display displayCtrl 15006) ctrlAddEventHandler ["ButtonClick",
 {
 	private _display = (ctrlParent (_this#0));
@@ -94,6 +102,9 @@ if !LOADED then
 		// Stop loading text
 		terminate _handle;
 
+		// Save last legal update as user has agreeded to it
+		profileNamespace setVariable ["aasp_legal_update", ("ArmaSpotifyController" callExtension "legal_update")];
+
 		// Now that the user is authorised, check if they have premium
 		private _master = displayParent _display;
 		_display closeDisplay 2;
@@ -105,5 +116,7 @@ if !LOADED then
 		{
 			_master createDisplay "AASP_spotify";
 		};
+
+
 	};
 }];

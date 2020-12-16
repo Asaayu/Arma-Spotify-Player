@@ -22,42 +22,38 @@ params
 ]
 #define PROFILE_COLOR [profilenamespace getvariable ['GUI_BCG_RGB_R',0.13], profilenamespace getvariable ['GUI_BCG_RGB_G',0.54], profilenamespace getvariable ['GUI_BCG_RGB_B',0.21],1]
 
+private _display = uinamespace getVariable ["aasp_spotify_display", displaynull];
+
 switch (toLower _mode) do
 {
 	case "button":
 	{
-		_data params [["_display", displayNull, [displayNull]], ["_control_group", controlNull, [controlNull]], ["_force_close", false, [false]]];
+		private _ctrl = _display displayCtrl 50000;
+		if (isNull _ctrl) then
+		{
+			_ctrl = _display ctrlCreate ["devices_control_group", 50000];
+		}
+		else
+		{
+			ctrlDelete _ctrl;
+		};
 
-		if (isNull _display || isNull _control_group) exitWith {};
+		if (isNull _display) exitWith {};
 
-		private _ctrl_open = ctrlShown _control_group;
-		private _list = _control_group controlsGroupCtrl 110;
+		private _list = _ctrl controlsGroupCtrl 110;
 
 		// Empty the list of options
 		lbClear _list;
 
-		if (_ctrl_open || _force_close) then
-		{
-			// Control is visable
-			_control_group ctrlShow false;
-			_list ctrlEnable false;
-		}
-		else
-		{
-			// Control is not visable
-			_control_group ctrlShow true;
-			_list ctrlEnable false;
+		// Add loading item
+		_list lbAdd "No Spotify devices found";
 
-			// Add loading item
-			_list lbAdd "No Spotify devices found";
+		// Create random string
+		private _variable = str round random 100000;
+		uiNamespace setVariable [_variable, _list];
 
-			// Create random string
-			private _variable = str round random 100000;
-			uiNamespace setVariable [_variable, _list];
-
-			// Load data from Spotify Web API
-			"ArmaSpotifyController" callExtension format["spotify:get_devices:%1",_variable];
-		};
+		// Load data from Spotify Web API
+		"ArmaSpotifyController" callExtension format["spotify:get_devices:%1",_variable];
 	};
 	case "display":
 	{

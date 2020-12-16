@@ -2,7 +2,6 @@ params
 [
 	["_display",displayNull,[displayNull]]
 ];
-disableSerialization;
 
 #define LOADED (uinamespace getVariable ['aasp_spotify_preloaded', false])
 
@@ -17,7 +16,7 @@ _display displayAddEventHandler
 			case (ctrlShown (_display displayCtrl 50000)):
 			{
 				// Close the control group then stop ESC from closing the display
-				["button", [_display, _display displayCtrl 50000, true]] call spotify_fnc_get_devices;
+				ctrlDelete (_display displayCtrl 50000);
 				true
 			};
 			case (ctrlShown (_display displayCtrl 55000)):
@@ -27,7 +26,7 @@ _display displayAddEventHandler
 			};
 			default
 			{
-			    false
+				false
 			};
 		};
 		_return
@@ -44,15 +43,51 @@ if !LOADED then
 // If the user opens this menu without being authorised, open the authorise menu instead.
 if (("ArmaSpotifyController" callExtension "authorised") != "true") exitWith
 {
-	private _master = displayParent _display;
-	_display closeDisplay 2;
-	_master createDisplay "AASP_setup";
+	closeDialog 2;
+	createDialog "AASP_setup";
 };
 if (("ArmaSpotifyController" callExtension "spotify:premium") != "true") exitWith
 {
-	private _master = displayParent _display;
-	_display closeDisplay 2;
-	_master createDisplay "AASP_premium";
+	closeDialog 2;
+	createDialog "AASP_premium";
+};
+
+private _last_update = "ArmaSpotifyController" callExtension "legal_update";
+if ((profileNamespace getVariable ["aasp_legal_update", ""]) != _last_update) exitWith
+{
+	[] spawn
+	{
+		["The <a href='https://github.com/Asaayu/Arma-Spotify-Player/blob/main/EULA.md'>EULA</a> and <a href='https://github.com/Asaayu/Arma-Spotify-Player/blob/main/PRIVACY-POLICY.md'>Privacy Policy</a> for Asaayu's Arma Spotify Player has been updated.<br/>By re-authorising your Spotify account you agree to the changes, if you do not want to agree to the changes <a href='https://steamcommunity.com/id/asaayu/'>unsubscribe from this mod on the Steam Workshop</a>", "Important Information", "I Understand", false] call BIS_fnc_guiMessage;
+
+		closeDialog 2;
+		createDialog "AASP_setup";
+	};
+};
+
+// Load playlists
+"ArmaSpotifyController" callExtension "spotify:request_playlists";
+
+private _last_window = uinamespace getVariable ["aasp_last_window", "home"];
+switch _last_window do
+{
+	case "recent":
+	{
+		call spotify_fnc_open_recent;
+	};
+	case "liked":
+	{
+		call spotify_fnc_open_liked;
+	};
+	case (_last_window find "playlist:" == 0):
+	{
+		// Last viewed a playlist
+	};
+	case "home";
+	default
+	{
+		// Open the last menu
+		call spotify_fnc_open_home;
+	};
 };
 
 // Force update info

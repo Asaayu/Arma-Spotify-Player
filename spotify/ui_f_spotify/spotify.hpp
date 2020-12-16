@@ -1,20 +1,8 @@
-#define SW safezoneW
-#define SH safezoneH
-#define SX safezoneX
-#define SY safezoneY
-
-#define HI(VALUE) (VALUE * 1.75 * SH)
-
-#define W(VALUE) (VALUE * SW)
-#define H(VALUE) (VALUE * SH)
-#define X(VALUE) (SX + VALUE * SW)
-#define Y(VALUE) (SY + VALUE * SH)
-
 class AASP_spotify
 {
 	idd = 57445;
 	enablesimulation = 1;
-	enabledisplay = 1;
+	enabledisplay = 0;
 	onLoad = "uinamespace setVariable ['aasp_spotify_display', _this#0]; _this spawn spotify_fnc_menu_onload;";
 	onUnload = "uinamespace setVariable ['aasp_spotify_display', displayNull];";
 	class controlsbackground
@@ -41,11 +29,17 @@ class AASP_spotify
                 };
 		class title_bar: ctrlStaticTitle
 		{
+			style = 2;
 			x = X(0.1);
 			y = Y(0.1);
                         w = W(0.8);
                         h = HI(0.0125);
+                        sizeEx = HI(0.0125);
                         colorBackground[] = {0,0,0,0};
+                        colorText[] = {1,1,1,0.1};
+			shadow = 0;
+			font = "RobotoCondensedBold";
+			text = "All cover art and song metadata is supplied and made avalaible by Spotify.";
                 };
 	};
 	class controls
@@ -66,9 +60,16 @@ class AASP_spotify
                 {
 			idc = 50;
 			text = "\spotify\ui_f_spotify\data\icons\gear_ca.paa";
-			x = X(0.9) - W(0.0125*2);
+			x = X(0.9) - W(0.0125*2.2);
 			tooltip = "Settings";
-			onButtonClick = "private _options_group = (ctrlParent (_this#0)) displayCtrl 55000; if (ctrlShown _options_group) then { _options_group ctrlShow false; } else { _options_group ctrlShow true; };";
+			onButtonClick = "call spotify_fnc_close_menus; private _options_group = (ctrlParent (_this#0)) displayCtrl 55000; if (ctrlShown _options_group) then { _options_group ctrlShow false; } else { _options_group ctrlShow true; };";
+		};
+                class spotify_button: settings_button
+                {
+			text = "\spotify\ui_f_spotify\data\spotify\icon_x32_white_ca.paa";
+			x = X(0.9) - W(0.0125*3.4);
+			tooltip = "Open Spotify";
+			onButtonClick = "'ArmaSpotifyController' callExtension 'open_spotify'";
 		};
 
 		// Bottom Box Buttons
@@ -191,21 +192,22 @@ class AASP_spotify
 		};
 
 		// Left hand stuff
-		class song_icon: ctrlStaticPicture
+		class song_icon: ctrlActivePicture
                 {
 			idc = 1500;
 			text = "";
+			tooltip = "Click to open the song in Spotify";
 			x = X(0.1) + W(0.005);
 			y = Y(0.82) + H(0.01);
 			w = W(0.035);
 			h = HI(0.035);
-			color[] = {1,0,0,0.7};
+			color[] = {1,1,1,1};
 			colorActive[] = {1,1,1,1};
 		};
 		class song_title_control_group: ctrlControlsGroupNoHScrollbars
 		{
 			idc = 1505;
-			x = X(0.1) + W(0.0435);
+			x = X(0.1) + W(0.045);
 			y = Y(0.82) + H(0.02);
 			w = W(0.1025);
 			h = H(0.0185);
@@ -262,28 +264,142 @@ class AASP_spotify
 			tooltip = "Like Button";
 		};
 
-		// Right hand bottom buttons
-		class playlist_button: ctrlActivePicture
+		//Left hande menu items
+		class left_selection_text: ctrlListbox
                 {
-			idc = 1300;
-			text = "\spotify\ui_f_spotify\data\icons\playlist_ca.paa";
+			idc = 8000;
+			x = X(0.1);
+			y = Y(0.1) + HI(0.0125);
+			w = W(0.8/8);
+			h = H(0.03*3);
+			rowHeight = H(0.03);
+			sizeEx = H(0.03);
+			font = "RobotoCondensedBold";
+			shadow = 0;
+			colorBackground[] = {0,0,0,0};
+			colorText[] = {1,1,1,0.7};
+			colorTextActive[] = {1,1,1,1};
+			onLBSelChanged = "_this call spotify_fnc_master_selection";
+			class items
+			{
+				class home
+				{
+					text = "Home";
+					picture = "\spotify\ui_f_spotify\data\icons\home_ca.paa";
+				};
+				class browse
+				{
+					text = "Browse";
+					picture = "\spotify\ui_f_spotify\data\icons\browse_ca.paa";
+				};
+			};
+		};
+		class your_library: ctrlStatic
+                {
+			style = 2;
+			text = "Your Library";
+			x = X(0.1);
+			y = Y(0.21) + HI(0.0125);
+			w = W(0.8/8);
+			h = H(0.02);
+			sizeEx = H(0.02);
+			font = "RobotoCondensedLight";
+			colorText[] = {1,1,1,0.7};
+		};
+		class left_selection_listbox: left_selection_text
+                {
+			idc = 8010;
+			x = X(0.1);
+			y = Y(0.23) + HI(0.0125);
+			w = W(0.8/8);
+			h = H(0.03*7);
+			rowHeight = H(0.03);
+			sizeEx = H(0.02);
+			font = "RobotoCondensed";
+			onLBSelChanged = "_this call spotify_fnc_secondary_selection";
+			class items
+			{
+				class recently_played
+				{
+					text = "Recently Played";
+				};
+				class liked_songs
+				{
+					text = "Liked Songs";
+				};
+				/*
+				class albums
+				{
+					text = "Albums";
+				};
+				class artists
+				{
+					text = "Artists";
+				};
+				class podcasts
+				{
+					text = "Podcasts";
+				};
+				*/
+			};
+		};
+		class playlists: your_library
+                {
+			text = "Playlists";
+			y = Y(0.43) + HI(0.0125);
+		};
+		class playlist_selection_group: ctrlControlsGroupNoHScrollbars
+		{
+			idc = 8025;
+			x = X(0.1);
+			y = Y(0.45) + HI(0.0125);
+			w = W(0.8/8);
+			h = H(0.03*9);
+		};
+		class playlist_selection_load: ctrlButton
+		{
+			idc = 8030;
+			text = "Load More Playlists";
+			x = X(0.1);
+			y = Y(0.1) + H(0.8) - H(0.8/10) - H(0.06);
+			w = W(0.8/8);
+			h = H(0.03);
+			sizeEx = H(0.02);
+			colorBackground[] = {0.1,0.1,0.1,1};
+			font = "RobotoCondensedBold";
+			shadow = 0;
+		};
+		class create_playlist: playlist_selection_load
+                {
+			idc = -1;
+			show = 0;
+			text = "Create a new playlist";
+			y = Y(0.1) + H(0.8) - H(0.8/10) - H(0.03);
+		};
+
+		// Right hand bottom buttons
+		class party_button: ctrlActivePicture
+                {
+			idc = 1295;
+			text = "\spotify\ui_f_spotify\data\icons\party_ca.paa";
 			x = X(0.775);
 			y = Y(0.86) - HI(0.015/2);
 			w = W(0.015);
 			h = HI(0.015);
 			color[] = {1,1,1,0.7};
 			colorActive[] = {1,1,1,1};
-			tooltip = "Playlist Button";
+			tooltip = "Listen Along";
+			onButtonClick = "call spotify_fnc_open_listen;";
 		};
-		class devices_button: playlist_button
+		class devices_button: party_button
                 {
 			idc = 1305;
 			text = "\spotify\ui_f_spotify\data\icons\devices_ca.paa";
 			x = X(0.775) + W(0.02625);
 			tooltip = "Devices Button";
-			onButtonClick = "private _display = ctrlParent (_this#0); ['button', [_display, _display displayCtrl 50000]] call spotify_fnc_get_devices;";
+			onButtonClick = "private _display = ctrlParent (_this#0); ['button'] call spotify_fnc_get_devices;";
 		};
-		class volume_button: playlist_button
+		class volume_button: party_button
                 {
 			idc = 1310;
 			text = "\spotify\ui_f_spotify\data\icons\volume_high_ca.paa";
@@ -306,28 +422,39 @@ class AASP_spotify
 			onMouseButtonDown = "(_this#0) setVariable ['aasp_seeking', true];";
 			onMouseButtonUp = "(_this#0) setVariable ['aasp_seeking', false];";
 		};
-
-		// Options menu
-		//#include "windows\options.hpp"
-
 		class no_device_text: ctrlStatic
                 {
 			idc = 1306;
-			style = 2;
+			style = 1;
 			show = 0;
-			text = "Click the devices button at the bottom right to select a device to connect to.";
-			x = X(0.5) - W(0.3);
-			y = Y(0.83) - H(0.045);
-			w = W(0.6);
-			h = H(0.03);
+			text = "Click the devices button below to select a device to connect to.";
+			x = X(0.6);
+			y = Y(0.9) - H(0.8/10);
+			w = W(0.3);
+			h = H(0.025);
 			font = "RobotoCondensedBold";
-			sizeEx = H(0.03);
+			sizeEx = H(0.02);
+			colorBackground[] = {0.17,0.17,0.17,1};
 		};
+		class private_text: no_device_text
+                {
+			idc = 1307;
+			text = "Current device is in a private session. Synchronization features will be unavalaible.";
+		};
+
+		// Liked menu
+		#include "windows\liked.hpp"
+
+		// Recent menu
+		#include "windows\recent.hpp"
+
+		// Home menu
+		#include "windows\home.hpp"
+
+		// Party menu
+		#include "windows\party.hpp"
 
 		// Options menu
 		#include "windows\options.hpp"
-
-		// Devices list
-		#include "windows\devices.hpp"
 	};
 };

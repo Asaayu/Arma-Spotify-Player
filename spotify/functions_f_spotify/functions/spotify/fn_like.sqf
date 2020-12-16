@@ -26,3 +26,5 @@ if _request then
 {
 	"ArmaSpotifyController" callExtension format["spotify:%1:%2", ["unlike","like"] select _like, _id];
 };
+
+_display setVariable ["aasp_last_click", diag_tickTime + 1];

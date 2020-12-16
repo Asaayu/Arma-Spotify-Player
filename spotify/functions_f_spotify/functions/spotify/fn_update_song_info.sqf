@@ -3,7 +3,6 @@ params
 	["_title_data", [], [[]]],
 	["_artist_data", [], [[]]]
 ];
-disableSerialization;
 
 private _display = uiNamespace getVariable ["aasp_spotify_display", displayNull];
 private _song_name_group = _display displayCtrl 1505;
@@ -14,7 +13,16 @@ private _name_ctrl = _song_name_group controlsGroupCtrl 1000;
 private _artist_ctrl = _song_artist_group controlsGroupCtrl 1000;
 
 if (isNull _display) exitWith {};
+
+if (_this isEqualTo [[],[]]) exitWith
+{
+	_song_name_group ctrlShow false;
+	_song_artist_group ctrlShow false;
+};
 if (count _title_data <= 0 || count _artist_data <= 0) exitWith {};
+
+_song_name_group ctrlShow true;
+_song_artist_group ctrlShow true;
 
 _title_data params
 [
@@ -35,13 +43,16 @@ if (ctrlText _name_ctrl != _url) then
 	_name_ctrl ctrlCommit 0;
 
 	private _length = ((pixelW * (_width * _coeff)) min (0.1195 * safezoneW));
-	_song_name_group ctrlSetPositionW _length;
+	private _pos = ctrlPosition _song_name_group;
+	_pos set [2, _length];
+	_song_name_group ctrlSetPosition _pos;
 	_song_name_group ctrlCommit 0;
 
 	private _position = ctrlPosition _song_name_group;
 
-	_song_like_ctrl ctrlShow true;
-	_song_like_ctrl ctrlSetPositionX (_position#0) + (_position#2) + (0.0025 * safezoneW);
+	private _pos = ctrlPosition _song_like_ctrl;
+	_pos set [0, (_position#0) + (_position#2) + (0.004 * safezoneW)];
+	_song_like_ctrl ctrlSetPosition _pos;
 	_song_like_ctrl ctrlCommit 0;
 };
 

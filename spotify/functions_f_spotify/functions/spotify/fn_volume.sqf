@@ -5,7 +5,6 @@ params
 	["_instant", false, [false]],
 	["_seek", false, [false]]
 ];
-disableSerialization;
 
 private _display = uiNamespace getVariable ["aasp_spotify_display", displayNull];
 private _slider = _display displayCtrl 1315;
@@ -23,7 +22,7 @@ if (_value == aasp_volume) exitWith {};
 
 if (_slider getVariable ['aasp_seeking', false] && {!_seek}) exitWith {};
 
-if (!_request || (profilenamespace getVariable ['aasp_info_delay', 3]) > 1) then
+if !_request then
 {
 	switch true do
 	{
@@ -60,16 +59,18 @@ if _request then
 	}
 	else
 	{
-		aasp_last_request = time + 0.2;
+		aasp_last_request = diag_tickTime + 0.2;
 		aasp_volume = _value;
 		if (isNil "aasp_volume_wait") then
 		{
 			aasp_volume_wait = [] spawn
 			{
-				waitUntil {uisleep 0.1; time > aasp_last_request};
+				waitUntil {uisleep 0.1; diag_tickTime > aasp_last_request};
 				"ArmaSpotifyController" callExtension format["spotify:set_volume:%1", round aasp_volume];
 				aasp_volume_wait = nil;
 			};
 		};
 	};
 };
+
+_display setVariable ["aasp_last_click", diag_tickTime + 1];

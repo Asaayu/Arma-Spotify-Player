@@ -4,7 +4,6 @@ params
 	["_request", false, [false]],
 	["_auto", false, [false]]
 ];
-disableSerialization;
 
 if _auto then
 {
@@ -58,3 +57,5 @@ if _request then
 {
 	"ArmaSpotifyController" callExtension format["spotify:repeat:%1",_mode];
 };
+
+_display setVariable ["aasp_last_click", diag_tickTime + 1];

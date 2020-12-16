@@ -4,7 +4,6 @@ params
 	["_request", false, [false]],
 	["_instant", false, [false]]
 ];
-disableSerialization;
 
 private _display = uiNamespace getVariable ["aasp_spotify_display", displayNull];
 private _slider = _display displayCtrl 1100;
@@ -39,3 +38,5 @@ if _request then
 		};
 	};
 };
+
+_display setVariable ["aasp_last_click", diag_tickTime + 1];

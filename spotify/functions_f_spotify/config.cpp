@@ -2,13 +2,22 @@ class CfgPatches
 {
 	class functions_f_spotify
 	{
+		authors[]= {"Asaayu"};
 		author = "Asaayu";
-		name = "functions_f_spotify";
-		url = "https://www.arma3.com";
+		name = "Asaayu's Arma Spotify Player - Functions";
+		url = "https://github.com/Asaayu/Arma-Spotify-Player";
 		units[] = {};
 		weapons[] = {};
 		requiredVersion = 0.1;
-		requiredAddons[] = { "A3_Data_F"};
+		requiredAddons[] = { "A3_Data_F", "main_f_spotify"};
+	};
+};
+
+class Extended_PreInit_EventHandlers
+{
+	class aasp_init_event
+	{
+		init = "call compile preprocessFileLineNumbers '\spotify\functions_f_spotify\XEH_preInit.sqf'";
 	};
 };
 
@@ -46,6 +55,22 @@ class CfgFunctions
 			class menu_onload {};
 			class setup_onload {};
 			class text_scroll {};
+
+			class track_click {};
+
+			class open_home {};
+			class open_listen {};
+			class open_recent {};
+			class open_liked {};
+			class open_playlist {};
+
+			class close_menus {};
+
+			class master_selection {};
+			class secondary_selection {};
+
+			class gui {};
+			class notification {};
 		};
 	};
 };

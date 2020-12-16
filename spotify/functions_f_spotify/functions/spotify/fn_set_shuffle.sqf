@@ -3,7 +3,6 @@ params
 	["_mode", false, [false]],
 	["_request", false, [false]]
 ];
-disableSerialization;
 
 private _display = uiNamespace getVariable ["aasp_spotify_display", displayNull];
 private _button = _display displayCtrl 1020;
@@ -32,3 +31,5 @@ if _request then
 {
 	"ArmaSpotifyController" callExtension format["spotify:shuffle:%1",_mode];
 };
+
+_display setVariable ["aasp_last_click", diag_tickTime + 1];

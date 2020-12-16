@@ -21,7 +21,7 @@ if (_auto && {_slider getVariable ["aasp_seeking", false]}) exitWith {};
 
 // Don't allow auto update to increment if there was a change recently
 // This avoids ui updates from causing jumps in the seek position
-if (_auto && {missionNamespace setVariable ["aasp_seek_update", 0] >= time}) exitWith {};
+if (_auto && {missionNamespace setVariable ["aasp_seek_update", 0] >= diag_tickTime}) exitWith {};
 
 // Limit position to the minimum and maximum of the song length
 private _position = ((_position max 0) min _length);
@@ -39,4 +39,4 @@ private _n_length_string = [_length - _position, "MM:SS"] call BIS_fnc_secondsTo
 _current_time ctrlSetText _current_string;
 _total_time ctrlSetText ("-" + _n_length_string);
 
-missionNamespace setVariable ["aasp_seek_update", time + 0.75];
+missionNamespace setVariable ["aasp_seek_update", diag_tickTime + 0.75];

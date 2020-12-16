@@ -34,6 +34,7 @@ class devices_control_group: ctrlControlsGroupNoHScrollbars
 		class connect_button: ctrlActivePicture
 		{
 			text = "\spotify\ui_f_spotify\data\icons\unknown_ca.paa";
+			tooltip = "What is Spotify Connect?";
 			x = W(0.115) - W(0.015);
 			y = 0;
 			w = W(0.015);
