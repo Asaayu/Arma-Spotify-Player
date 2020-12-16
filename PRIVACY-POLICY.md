@@ -1,5 +1,3 @@
-Last updated: 7/12/2020
-
 # What we collect
 We collect personal information about you from Spotify, including information about your:
  * Spotify Subscription
@@ -49,3 +47,5 @@ Please, therefore, make sure you read any such notice carefully.
 # Contact the author
 The author of this software can be contacted through the following means:
 Discord: `Asaayu#1337`
+
+ALL COPIES OF THIS SOFTWARE MUST CONTAIN THIS PRIVACY POLICEY, THE LICENSE, SOFTWARE END-USER LICENSE AGREEMENT, AND README.
