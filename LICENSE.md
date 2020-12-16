@@ -12,7 +12,7 @@ With this licence you are free to adapt (i.e. modify, rework or update) and shar
 - **Arma Only** - You may not convert or adapt this material to be used in other games than Arma.
 - **No Derivatives** - If you remix, transform, or build upon the material, you may not distribute the modified material.
 
-View a full version of the license at (bohemia.net/community/licenses/arma-public-license-nd)[https://www.bohemia.net/community/licenses/arma-public-license-nd].
+View a full version of the license at [bohemia.net/community/licenses/arma-public-license-nd](https://www.bohemia.net/community/licenses/arma-public-license-nd).
 
 An adaption to this license is avaliable upon request for your needs, but may be denied due to security, legal or any other reason at the discretion of Asaayu.
 
