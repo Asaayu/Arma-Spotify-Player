@@ -58,3 +58,5 @@ The Spotify Developer Dashboard displays the following telemetry data,
 **To remove this applications access to your Spotify account visit your [Spotify account apps page](https://www.spotify.com/us/account/apps/) and click *REMOVE ACCESS*  beside the "Asaayu's Arma Spotify Player" application**
 
 This mod uses Bootstrap icons, licensed under the MIT license. Go to the [Bootstrap Icon Repository](https://github.com/twbs/icons/blob/main/LICENSE.md) to view the license.
+
+ALL COPIES OF THIS SOFTWARE MUST CONTAIN THIS README, THE LICENSE, SOFTWARE END-USER LICENSE AGREEMENT, AND PRIVACY POLICEY.
