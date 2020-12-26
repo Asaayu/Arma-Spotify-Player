@@ -1,4 +1,4 @@
-Copyright 2020 Ethan Johnson
+Copyright 2020 Asaayu
 
 This work is licensed under the Arma Public License No Derivatives (APL-ND).
 
