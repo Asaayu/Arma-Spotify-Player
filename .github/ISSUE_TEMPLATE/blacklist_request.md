@@ -2,7 +2,7 @@
 name: Blacklist Request
 about: Request that a user should be blacklisted from using this mod
 title: Blacklist Request
-labels: blacklist-request
+labels: blacklist request
 assignees: Asaayu
 
 ---
