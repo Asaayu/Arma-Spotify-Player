@@ -66,34 +66,36 @@
 
 23.  You may not attempt to interfere or circumvent any restrictions placed on your use of this software.
 
-24.  Spotify is a third party beneficiary of this end-user license agreement and privacy policy and is entitled to directly enforce this end-user license agreement.
+24.  You may have your access to this mod terminated at any time for any reason, with or without warning.
+
+25.  Spotify is a third party beneficiary of this end-user license agreement and privacy policy and is entitled to directly enforce this end-user license agreement.
 
 **Governing Law**
 
-25.  The Parties to this Agreement submit to the jurisdiction of the courts of New Zealand for the enforcement of this Agreement or any arbitration award or decision arising from this Agreement. This Agreement will be enforced or construed according to the laws of New Zealand.
+26.  The Parties to this Agreement submit to the jurisdiction of the courts of New Zealand for the enforcement of this Agreement or any arbitration award or decision arising from this Agreement. This Agreement will be enforced or construed according to the laws of New Zealand.
 
 **Miscellaneous**
 
-26.  This Agreement can only be modified in writing signed by both the Vendor and the Licensee.
+27.  This Agreement can only be modified in writing signed by both the Vendor and the Licensee.
 
-27.  This Agreement does not create or imply any relationship in agency or partnership between the Vendor and the Licensee.
+28.  This Agreement does not create or imply any relationship in agency or partnership between the Vendor and the Licensee.
 
-28.  Headings are inserted for the convenience of the parties only and are not to be considered when interpreting this Agreement. Words in the singular mean and include the plural and vice versa. Words in the masculine gender include the feminine gender and vice versa. Words in the neuter gender include the masculine gender and the feminine gender and vice versa.
+29.  Headings are inserted for the convenience of the parties only and are not to be considered when interpreting this Agreement. Words in the singular mean and include the plural and vice versa. Words in the masculine gender include the feminine gender and vice versa. Words in the neuter gender include the masculine gender and the feminine gender and vice versa.
 
-29.  If any term, covenant, condition or provision of this Agreement is held by a court of competent jurisdiction to be invalid, void or unenforceable, it is the parties' intent that such provision be reduced in scope by the court only to the extent deemed necessary by that court to render the provision reasonable and enforceable and the remainder of the provisions of this Agreement will in no way be affected, impaired or invalidated as a result.
+30.  If any term, covenant, condition or provision of this Agreement is held by a court of competent jurisdiction to be invalid, void or unenforceable, it is the parties' intent that such provision be reduced in scope by the court only to the extent deemed necessary by that court to render the provision reasonable and enforceable and the remainder of the provisions of this Agreement will in no way be affected, impaired or invalidated as a result.
 
-30.  This Agreement contains the entire agreement between the parties. All understandings have been included in this Agreement. Representations which may have been made by any party to this Agreement may in some way be inconsistent with this final written Agreement. All such statements are declared to be of no value in this Agreement. Only the written terms of this Agreement will bind the parties.
+31.  This Agreement contains the entire agreement between the parties. All understandings have been included in this Agreement. Representations which may have been made by any party to this Agreement may in some way be inconsistent with this final written Agreement. All such statements are declared to be of no value in this Agreement. Only the written terms of this Agreement will bind the parties.
 
-31.  This Agreement and the terms and conditions contained in this Agreement apply to and are binding upon the Vendor's successors and assigns.
+32.  This Agreement and the terms and conditions contained in this Agreement apply to and are binding upon the Vendor's successors and assigns.
 
 **Notices**
 
-32.  All notices to the Vendor under this Agreement are to be provided through the following means:
+33.  All notices to the Vendor under this Agreement are to be provided through the following means:
 Discord: `Asaayu#1337`
 
 **EULA Updates**
 
-33. When we make changes to this EULA, we will force you to re-authenticate your Spotify account with this software and inform you of the date of the latest change to this EULA in order to provide you with prominent notice of these changes.
+34. When we make changes to this EULA, we will force you to re-authenticate your Spotify account with this software and inform you of the date of the latest change to this EULA in order to provide you with prominent notice of these changes.
     Please, therefore, make sure you read any such notice carefully.
 
 ALL COPIES OF THIS SOFTWARE MUST CONTAIN THIS SOFTWARE END-USER LICENSE AGREEMENT, THE LICENSE, PRIVACY POLICEY, AND README.
