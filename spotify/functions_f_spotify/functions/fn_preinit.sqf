@@ -541,6 +541,15 @@ addMissionEventHandler ["ExtensionCallback",
 
 			"aasp_notification" cutRsc ["aasp_notification", "PLAIN", -1, false];
 		};
+		case ("reload_display"):
+		{
+			private _display = uinamespace getVariable ["aasp_spotify_display", displaynull];
+			_display closeDisplay 2;
+			[] spawn
+			{
+				createDialog "AASP_spotify";
+			};
+		};
 		default
 		{
 			"ArmaSpotifyController" callExtension format["error:ExtensionCallback EVH ran into undefined function (%1)",_function];

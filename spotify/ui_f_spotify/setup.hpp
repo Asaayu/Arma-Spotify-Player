@@ -124,7 +124,7 @@ class AASP_setup
 			colorBackground[] = {"profilenamespace getvariable ['GUI_BCG_RGB_R',0.77]","profilenamespace getvariable ['GUI_BCG_RGB_G',0.51]","profilenamespace getvariable ['GUI_BCG_RGB_B',0.08]",1};
 			colorBackgroundActive[] = {0,0,0,1};
 			colorText[] = {1,1,1,1};
-		};
+		};/*
 		class access_token_title: title
                 {
 			idc = 15007;
@@ -160,7 +160,7 @@ class AASP_setup
 			text = "";
 			y = Y(0.1125) + H(0.68);
 			colorText[] = {1,0,0,1};
-		};
+		};*/
 		class legal_footer_01: ctrlStatic
                 {
 			idc = 15011;
