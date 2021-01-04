@@ -19,13 +19,13 @@ class album_control_group: ctrlControlsGroupNoHScrollbars
 		class title_control_group: ctrlControlsGroupNoHScrollbars
 		{
 			idc = 100;
-			x = W(0.11);
-			y = HI(0.1) - H(0.055);
+			x = W(0.115);
+			y = HI(0.1) - H(0.075);
 			w = W(0.57);
 			h = H(0.035);
 			class controls
 			{
-				class title: ctrlStaticPicture
+				class title: ctrlActivePicture
 				{
 					idc = 105;
 					text = "";
@@ -35,17 +35,25 @@ class album_control_group: ctrlControlsGroupNoHScrollbars
 					h = H(0.035);
 				};
 			};
+			class HScrollbar: ScrollBar
+			{
+				height = 0;
+			};
+			class VScrollbar: ScrollBar
+			{
+				width = 0;
+			};
 		};
-		class subtitle_control_group: ctrlControlsGroupNoHScrollbars
+		class subtitle_control_group: title_control_group
 		{
 			idc = 150;
-			x = W(0.11);
-			y = HI(0.1) - H(0.02);
+			x = W(0.115);
+			y = HI(0.1) - H(0.04);
 			w = W(0.57);
 			h = H(0.02);
 			class controls
 			{
-				class subtitle: ctrlStaticPicture
+				class subtitle: ctrlActivePicture
 				{
 					idc = 155;
 					text = "";
@@ -53,6 +61,26 @@ class album_control_group: ctrlControlsGroupNoHScrollbars
 					y = 0;
 					w = W(0.57);
 					h = H(0.02);
+				};
+			};
+		};
+		class copyright_control_group: title_control_group
+		{
+			idc = 170;
+			x = W(0.115);
+			y = HI(0.1) - H(0.02);
+			w = W(0.57);
+			h = H(0.017);
+			class controls
+			{
+				class copyright: ctrlActivePicture
+				{
+					idc = 175;
+					text = "";
+					x = 0;
+					y = 0;
+					w = W(0.57);
+					h = H(0.017);
 				};
 			};
 		};
@@ -76,8 +104,8 @@ class album_control_group: ctrlControlsGroupNoHScrollbars
 		};
 		class title_03: title_01
 		{
-			text = "Album";
-			x = W(0.52);
+			text = "Length";
+			x = W(0.588);
 			w = W(0.13);
 		};
 		class spacer_01: ctrlStatic
@@ -111,14 +139,14 @@ class album_control_group: ctrlControlsGroupNoHScrollbars
 			colorBackground[] = {"profilenamespace getvariable ['GUI_BCG_RGB_R',0.77]","profilenamespace getvariable ['GUI_BCG_RGB_G',0.51]","profilenamespace getvariable ['GUI_BCG_RGB_B',0.08]",1};
 			colorBackgroundActive[] = {0,0,0,1};
 			colorText[] = {1,1,1,1};
-			onButtonClick ="private _ctrl = (ctrlParentControlsGroup (_this#0)) controlsGroupCtrl 500;       private _id = _ctrl getVariable ['aasp_playlist_id', ''];	private _offset = _ctrl getVariable ['aasp_ctrl_index', 0];       private _variable = str round random 100000;        uiNamespace setVariable [_variable, _ctrl];       'ArmaSpotifyController' callExtension format['spotify:LoadPlaylist:%1:%2:%3',_variable,_id,(_offset-10)/3];";
+			onButtonClick ="private _ctrl = (ctrlParentControlsGroup (_this#0)) controlsGroupCtrl 500;       private _id = _ctrl getVariable ['aasp_playlist_id', ''];	private _offset = _ctrl getVariable ['aasp_ctrl_index', 0];       private _variable = str round random 100000;        uiNamespace setVariable [_variable, _ctrl];       'ArmaSpotifyController' callExtension format['spotify:load_playlist:%1:%2:%3',_variable,_id,(_offset-10)/3];";
 		};
 		class play_button: load_button
                 {
 			idc = 200;
-			text = "Play Playlist";
+			text = "Play Album";
 			x = W(0.01);
-			onButtonClick ="'ArmaSpotifyController' callExtension format['spotify:play_%1:%2', 'playlist', (_this#0) getVariable ['aasp_playlist_id','']];";
+			onButtonClick ="'ArmaSpotifyController' callExtension format['spotify:play_%1:%2', 'album', (_this#0) getVariable ['aasp_album_id','']];";
 		};
 	};
 };

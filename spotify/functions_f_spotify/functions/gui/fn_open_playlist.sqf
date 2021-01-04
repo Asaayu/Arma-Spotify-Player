@@ -17,7 +17,7 @@ private _secondary_selection = _display displayCtrl 8010;
 	_x setVariable ["aasp_auto_selection", false];
 } foreach [_master_selection, _secondary_selection];
 
-uinamespace setVariable ["aasp_last_window", "playlist:" + _id];
+uinamespace setVariable ["aasp_last_window", format["playlist:%1",_id]];
 ctrlDelete (_display displayCtrl 87000);
 
 _playlist_group = _display ctrlCreate ["playlist_control_group", 87000];
@@ -32,18 +32,6 @@ private _control_group = _playlist_group controlsGroupCtrl 500;
 private _load_button = _playlist_group controlsGroupCtrl 1000;
 private _play_button = _playlist_group controlsGroupCtrl 200;
 _play_button setVariable ['aasp_playlist_id', _id];
-
-private _show = (_total > 50 && _offset + 50 < _total);
-_load_button ctrlShow _show;
-_load_button setVariable ['aasp_show', _show];
-
-private _variable_title = str round random 100000;
-private _variable_subtitle = str round random 100000;
-private _variable_image = str round random 100000;
-uiNamespace setVariable [_variable_title, (_playlist_group controlsGroupCtrl 100) controlsGroupCtrl 100];
-uiNamespace setVariable [_variable_subtitle, (_playlist_group controlsGroupCtrl 150) controlsGroupCtrl 150];
-uiNamespace setVariable [_variable_image, _playlist_group controlsGroupCtrl 50];
-"ArmaSpotifyController" callExtension format["spotify:set_playlist_info:%1:%2:%3",_variable_title, _variable_subtitle, _variable_image];
 
 private _variable = str round random 100000;
 uiNamespace setVariable [_variable, _control_group];

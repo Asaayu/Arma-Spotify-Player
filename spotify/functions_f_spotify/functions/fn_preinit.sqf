@@ -107,6 +107,10 @@ addMissionEventHandler ["ExtensionCallback",
 				{
 					_image ctrlAddEventHandler ["ButtonClick", format["['%1'] call spotify_fnc_open_playlist", _id]];
 				};
+				case (_type == "album"):
+				{
+					_image ctrlAddEventHandler ["ButtonClick", format["['%1'] call spotify_fnc_open_album", _id]];
+				};
 				case (_type == "track"):
 				{
 					_image ctrlAddEventHandler ["ButtonClick", format["'ArmaSpotifyController' callExtension 'spotify:play_%1:%2'", _type, _id]];
@@ -312,6 +316,10 @@ addMissionEventHandler ["ExtensionCallback",
 			if (isNull _ctrl) exitWith {};
 
 			private _load_button = (_display displayCtrl 86000) controlsGroupCtrl 1000;
+			if !_liked_playlist then
+			{
+				_load_button = (_display displayCtrl 87000) controlsGroupCtrl 1000;
+			};
 			private _show = (_total > 50 && _offset + 50 < _total);
 			_load_button ctrlShow _show;
 			_load_button setVariable ['aasp_show', _show];
@@ -319,6 +327,8 @@ addMissionEventHandler ["ExtensionCallback",
 			private _index = _ctrl getVariable ["aasp_ctrl_index", 10];
 			private _x_value = 0;
 			private _y_value = (0.0275 * safeZoneH) * (_index - 10)/3;
+
+			private _type = ["playlist","album"] select (_id == _album_id);
 
 			private _ctrl_height = 0.02 * safezoneH;
 			{
@@ -329,7 +339,11 @@ addMissionEventHandler ["ExtensionCallback",
 					["_height", 0, [0]]
 				];
 
-				private _ctrl_width =  ([0.34, 0.15, 0.13]#_foreachindex) * safeZoneW;
+				private _ctrl_width = ([0.34, 0.15, 0.13]#_foreachindex) * safeZoneW;
+				if (_type == "album") then
+				{
+					_ctrl_width = ([0.34, 0.22, 0.06]#_foreachindex) * safeZoneW;
+				};
 
 				private _holder = _display ctrlCreate ["ctrlControlsGroupNoHScrollbars", _index, _ctrl];
 				_holder ctrlSetPosition [_x_value, _y_value + (0.0025 * safeZoneH), _ctrl_width, _ctrl_height];
@@ -345,14 +359,17 @@ addMissionEventHandler ["ExtensionCallback",
 					case 0:
 					{
 						// Title
-						_text_image ctrlAddEventHandler ["MouseButtonClick", format["(_this + ['%1',%2,%3]) call spotify_fnc_track_click", _id, (_index - 10)/3, _liked_playlist]];
-						_text_image ctrlSetTooltip "[Left Click] to play this song\n[Ctrl-Left Click] to add this song to your queue";
+						_text_image ctrlAddEventHandler ["MouseButtonClick", format["(_this + ['%1',%2,'%3',%4]) call spotify_fnc_track_click", _id, (_index - 10)/3, _type, _liked_playlist]];
+						_text_image ctrlSetTooltip "[Left Click] to play this song";
 					};
 					case 2:
 					{
-						// Album
-						_text_image ctrlAddEventHandler ["ButtonClick", format["'ArmaSpotifyController' callExtension 'spotify:play_album:%1:%2'",_album_id, 0]];
-						_text_image ctrlSetTooltip "[Left Click] to open this album";
+						if (_type != "album") then
+						{
+							// Album
+							_text_image ctrlAddEventHandler ["ButtonClick", format["[] spawn {['%1'] call spotify_fnc_open_album}",_album_id]];
+							_text_image ctrlSetTooltip "[Left Click] to open this album";
+						};
 					};
 				};
 				_text_image ctrlCommit 0;
@@ -363,8 +380,21 @@ addMissionEventHandler ["ExtensionCallback",
 				_text_image ctrlSetPositionW (pixelW * (_width * _coeff));
 				_text_image ctrlCommit 0;
 
-				_x_value = _x_value + ([0.35, 0.16, 0.13]#_foreachindex) * safeZoneW;
+				if (_type == "album") then
+				{
+					_x_value = _x_value + ([0.35, 0.23, 0.13]#_foreachindex) * safeZoneW;
+				}
+				else
+				{
+					_x_value = _x_value + ([0.35, 0.16, 0.06]#_foreachindex) * safeZoneW;
+				};
 			} foreach [_title, _artist, _album];
+
+			// Add extra missing space
+			if (_type != "album") then
+			{
+				_x_value = _x_value + (0.07 * safeZoneW);
+			};
 
 			private _link = _display ctrlCreate ["ctrlActivePicture", _index + 1, _ctrl];
 			_link ctrlSetText "\spotify\ui_f_spotify\data\icons\link_ca.paa";
@@ -408,7 +438,7 @@ addMissionEventHandler ["ExtensionCallback",
 
 				(ctrlPosition _ctrl) params ["_x","_y","_w","_h"];
 				_ctrl ctrlSetPosition [0,0,_w,_h];
-				_ctrl ctrlAddEventHandler ["MouseEnter", format["[_this#0, %1] spawn spotify_fnc_text_scroll", _w]];
+				_ctrl ctrlAddEventHandler ["MouseEnter", format["[_this#0, %1] spawn spotify_fnc_text_scroll", 0.57 * safeZoneW]];
 				_ctrl ctrlSetActiveColor [1,1,1,1];
 				_ctrl ctrlSetTextColor [1,1,1,1];
 				_ctrl ctrlCommit 0;
@@ -423,7 +453,65 @@ addMissionEventHandler ["ExtensionCallback",
 			if (_subtitle#0 == "") then
 			{
 				_title_ctrl_master ctrlSetPositionY ((0.1 * 1.75 * safeZoneH) - (0.035 * safeZoneH));
+			};
 
+			if (_image != "") then
+			{
+				_image_ctrl ctrlSetText _image;
+			}
+			else
+			{
+				_image_ctrl ctrlShow false;
+				_title_ctrl_master ctrlSetPositionX (0.01 * safeZoneW);
+				_subtitle_ctrl_master ctrlSetPositionX (0.01 * safeZoneW);
+				{_x ctrlCommit 0} foreach [_title_ctrl_master, _subtitle_ctrl_master];
+			};
+		};
+		case ("set_album_info"):
+		{
+			(parseSimpleArray _data) params ["_title","_subtitle","_copyright","_image"];
+
+			private _display = uinamespace getVariable ["aasp_spotify_display", displaynull];
+			if (isNull _display) exitWith {};
+
+			private _ctrl = _display displayCtrl 88000;
+			if (isNull _ctrl) exitWith {};
+
+			private _image_ctrl = _ctrl controlsGroupCtrl 50;
+			private _title_ctrl_master = _ctrl controlsGroupCtrl 100;
+			private _subtitle_ctrl_master = _ctrl controlsGroupCtrl 150;
+			private _copyright_ctrl_master = _ctrl controlsGroupCtrl 170;
+			private _title_ctrl = _title_ctrl_master controlsGroupCtrl 105;
+			private _subtitle_ctrl = _subtitle_ctrl_master controlsGroupCtrl 155;
+			private _copyright_ctrl = _copyright_ctrl_master controlsGroupCtrl 175;
+
+			{
+				_x params
+				[
+					["_url", "", [""]],
+					["_width", 0, [0]],
+					["_height", 0, [0]]
+				];
+
+				private _ctrl = [_title_ctrl,_subtitle_ctrl,_copyright_ctrl]#_foreachindex;
+
+				(ctrlPosition _ctrl) params ["_x","_y","_w","_h"];
+				_ctrl ctrlSetPosition [0,0,_w,_h];
+				_ctrl ctrlAddEventHandler ["MouseEnter", format["[_this#0, %1] spawn spotify_fnc_text_scroll", 0.57 * safeZoneW]];
+				_ctrl ctrlSetActiveColor [1,1,1,1];
+				_ctrl ctrlSetTextColor [1,1,1,1];
+				_ctrl ctrlCommit 0;
+
+				private _coeff = _h/(pixelH * _height);
+				_ctrl ctrlSetText _url;
+				_ctrl ctrlSetPositionX 0;
+				_ctrl ctrlSetPositionW (pixelW * (_width * _coeff));
+				_ctrl ctrlCommit 0;
+			} foreach [_title, _subtitle, _copyright];
+
+			if (_subtitle#0 == "") then
+			{
+				_title_ctrl_master ctrlSetPositionY ((0.1 * 1.75 * safeZoneH) - (0.035 * safeZoneH));
 			};
 
 			if (_image != "") then

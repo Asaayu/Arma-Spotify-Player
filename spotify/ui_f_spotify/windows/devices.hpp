@@ -1,7 +1,7 @@
 class devices_control_group: ctrlControlsGroupNoHScrollbars
 {
 	idc = 50000;
-	show = 0;
+	show = 1;
 	x = X(0.80875) - W(0.115/2);
 	y = Y(0.8675) - H(0.2275);
 	w = W(0.115);

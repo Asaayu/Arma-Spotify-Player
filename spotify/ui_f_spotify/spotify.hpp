@@ -9,6 +9,7 @@ class AASP_spotify
 	{
 		class background_main: ctrlStaticBackground
 		{
+			idc = 550;
 			x = X(0.1);
 			y = Y(0.1);
 			w = W(0.8);
@@ -18,6 +19,7 @@ class AASP_spotify
 		class background_second: background_main {};
                 class background_left: background_main
 		{
+			idc = 555;
                         w = W(0.8/8);
                         colorBackground[] = {0.1,0.1,0.1,1};
                 };
@@ -359,6 +361,7 @@ class AASP_spotify
 		class playlist_selection_load: ctrlButton
 		{
 			idc = 8030;
+			show = 0;
 			text = "Load More Playlists";
 			x = X(0.1);
 			y = Y(0.1) + H(0.8) - H(0.8/10) - H(0.06);

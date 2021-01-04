@@ -30,7 +30,7 @@ class party_control_group: ctrlControlsGroupNoHScrollbars
 		};
 		class description_01: ctrlStatic
 		{
-			text = "This system is currently in BETA and will contain bugs, be missing features and will probably break unexpectedly.";
+			text = "Listen Along allows you to listen along with your friends who also have this mod enabled.";
 			x = W(0.1);
 			y = LHX(1);
 			w = W(0.45);
@@ -40,8 +40,18 @@ class party_control_group: ctrlControlsGroupNoHScrollbars
 		};
 		class description_02: description_01
 		{
-			text = "This feature is not currently implemented.";
+			text = "All audio is played through Spotify, therefore users will need to have a Spotify Premium subscription";
+			y = LHX(2);
+		};
+		class description_03: description_01
+		{
+			text = "and will need to authorise the connection between their Spotify account and the mod.";
 			y = LHX(3);
+		};
+		class blocker: description_01
+		{
+			text = "This feature is not currently available.";
+			y = LHX(5);
 		};
 	};
 };

@@ -15,6 +15,10 @@ using System.Diagnostics;
 using System.Web.Script.Serialization;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Windows.Forms;
+
+using SpotifyAPI.Web;
+using SpotifyAPI.Web.Auth;
 
 namespace ArmaSpotifyController
 {
@@ -60,14 +64,12 @@ namespace ArmaSpotifyController
         internal static readonly HttpClientHandler client_handler = new HttpClientHandler { UseDefaultCredentials = true };
         internal static readonly HttpClient client = new HttpClient(client_handler);
 
+        // WebBrowser for running JS
+        internal static WebBrowser web = new WebBrowser();
+
         // Security variables
         internal static string verifier_string;
         internal static int state;
-
-        // Playlist variable information
-        internal static string playlist_icon_variable;
-        internal static string playlist_title_variable;
-        internal static string playlist_subtitle_variable;
     }
 
     public class Master
@@ -118,6 +120,8 @@ namespace ArmaSpotifyController
 
             // Get current version
             Variable.legal_update = Legal.GetLastUpdate().Result;
+
+            BackgroundRequests.LoadWebPlayer();
 
             // Auto output the version information to the report file
             output.Append(Variable.version_info);
@@ -370,15 +374,46 @@ namespace ArmaSpotifyController
 
                         // LOAD_PLAYLIST: Loads a playlist and shows it in the GUI
                         case "load_playlist":
-                            if (parameters.Length >= 5)
+                            try
                             {
-                                await Request.LoadPlaylist(parameters[2], parameters[3], int.Parse(parameters[3]));
+                                if (parameters.Length >= 5)
+                                {
+                                    await Request.LoadPlaylist(parameters[2], parameters[3], int.Parse(parameters[4]));
+                                }
+                                else
+                                {
+                                    await Request.LoadPlaylist(parameters[2], parameters[3]);
+                                }
+                                output.Append("true");
                             }
-                            else
+                            catch (Exception e)
                             {
-                                await Request.LoadPlaylist(parameters[2], parameters[3]);
+                                Log.Message("Load playlist request Error: " + e.ToString());
+                                Log.Message(parameters[2]);
+                                output.Append("false");
                             }
-                            output.Append("true");
+                            break;
+                            
+                        // LOAD_ALBUM: Loads a album and shows it in the GUI
+                        case "load_album":
+                            try
+                            {
+                                if (parameters.Length >= 5)
+                                {
+                                    await Request.LoadAlbum(parameters[2], parameters[3], int.Parse(parameters[4]));
+                                }
+                                else
+                                {
+                                    await Request.LoadAlbum(parameters[2], parameters[3]);
+                                }
+                                output.Append("true");
+                            }
+                            catch (Exception e)
+                            {
+                                Log.Message("Load album request Error: " + e.ToString());
+                                Log.Message(parameters[2]);
+                                output.Append("false");
+                            }
                             break;
 
                         // TRACK: This opens the track in the spotify player
@@ -791,6 +826,8 @@ namespace ArmaSpotifyController
             // Check if file already exists, if it does then don't bother creating another one
             if (File.Exists(@path.ToString()))
             {
+                // Wait the refresh time so that we have time for the image to be written
+                Task.Delay(250);
                 System.Drawing.Image ext_img = System.Drawing.Image.FromFile(path.ToString());
                 return new string[] { path.ToString(), ext_img.Width.ToString(), ext_img.Height.ToString() };
             }
@@ -1854,6 +1891,139 @@ namespace ArmaSpotifyController
             }
         }
 
+        internal async static Task LoadAlbum(string variable, string album_id, int offset = 0)
+        {
+            try
+            {
+                Variable.client.DefaultRequestHeaders.Clear();
+                Variable.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Variable.client_access_token);
+
+                var items_response = await Variable.client.GetAsync("https://api.spotify.com/v1/albums/" + album_id + "/tracks?limit=50&offset=" + offset.ToString() + "&market=" + Variable.client_country);
+                var info_response = await Variable.client.GetAsync("https://api.spotify.com/v1/albums/" + album_id);
+
+                if (items_response.IsSuccessStatusCode)
+                {
+                    var serializer = new JavaScriptSerializer();
+                    Classes.AlbumItems.Root data = serializer.Deserialize<Classes.AlbumItems.Root>(await items_response.Content.ReadAsStringAsync());
+
+                    List<string> tracks = new List<string>();
+                    foreach (Classes.AlbumItems.Item item in data.items)
+                    {
+                        List<string> artists_list = new List<string>();
+                        foreach (Classes.AlbumItems.Artist artist in item.artists)
+                        {
+                            artists_list.Add(artist.name);
+                        };
+                        string artists = string.Join(", ", artists_list);
+
+                        TimeSpan t = TimeSpan.FromSeconds(item.duration_ms/1000);
+                        string length = "";
+                        if (item.duration_ms/1000 >= 3600)
+                        {
+                            length = string.Format("{0:D2}:{1:D2}:{2:D2}", t.Hours, t.Minutes, t.Seconds);
+                        }
+                        else
+                        {
+                            length = string.Format("{0:D2}:{1:D2}", t.Minutes, t.Seconds);
+                        };                        
+
+                        // Download text for title + author
+                        string[] title_image = Image.DrawText(item.name, new Font("Arial", 19, FontStyle.Bold), Color.White, ColorTranslator.FromHtml("#242424"));
+                        string[] artist_image = Image.DrawText(artists, new Font("Arial", 19, FontStyle.Regular), Color.White, ColorTranslator.FromHtml("#242424"));
+                        string[] length_image = Image.DrawText(length, new Font("Arial", 19, FontStyle.Regular), Color.White, ColorTranslator.FromHtml("#242424"));
+                        
+                        Master.callback.Invoke("ArmaSpotifyController", "append_textlist_playlist",
+                            string.Format("[\"{0}\",\"{1}\",[\"{2}\",{3},{4}],[\"{5}\",{6},{7}],[\"{8}\",{9},{10}],\"{11}\",\"{12}\",{13},{14}]",
+                                variable,
+                                album_id,
+                                title_image[0],
+                                title_image[1],
+                                title_image[2],
+                                artist_image[0],
+                                artist_image[1],
+                                artist_image[2],
+                                length_image[0],
+                                length_image[1],
+                                length_image[2],
+                                album_id,
+                                item.uri,
+                                data.total,
+                                data.offset
+                            )
+                        );
+                    }
+                }
+                else
+                {
+                    Log.Message("'LoadAlbum' Error: " + items_response.StatusCode.ToString());
+                    Log.Message(items_response.ReasonPhrase);
+                }
+
+                if (info_response.IsSuccessStatusCode)
+                {
+                    var serializer = new JavaScriptSerializer();
+                    Classes.AlbumInfo.Root data = serializer.Deserialize<Classes.AlbumInfo.Root>(await info_response.Content.ReadAsStringAsync());
+
+                    string playlist_logo_image = "";
+                    if (data.images.Count > 1)
+                    {
+                        playlist_logo_image = Image.DownloadImage(data.images[data.images.FindIndex(a => int.Parse(a.height.ToString()) == 300 && int.Parse(a.width.ToString()) == 300)].url).Result;
+                    }
+                    else
+                    {
+                        playlist_logo_image = Image.DownloadImage(data.images[0].url).Result;
+                    };
+
+                    List<string> artists_list = new List<string>();
+                    foreach (Classes.AlbumInfo.Artist artist in data.artists)
+                    {
+                        artists_list.Add(artist.name);
+                    };
+                    string artists = string.Join(", ", artists_list);
+
+                    List<string> copyright_list = new List<string>();
+                    foreach (Classes.AlbumInfo.Copyright copyright in data.copyrights)
+                    {
+                        copyright_list.Add(copyright.text
+                            .Replace("(c)", "©")
+                            .Replace("(C)", "©")
+                            .Replace("(p)", "℗")
+                            .Replace("(P)", "℗")
+                            );
+                    };
+                    string copyrights = string.Join(" ", copyright_list);
+
+                    string[] playlist_title_image = Image.DrawText(data.name, new Font("Arial", 26, FontStyle.Bold), Color.White, ColorTranslator.FromHtml("#242424"));
+                    string[] playlist_subtitle_image = Image.DrawText(artists, new Font("Arial", 22, FontStyle.Regular), Color.White, ColorTranslator.FromHtml("#242424"));
+                    string[] playlist_copyright_image = Image.DrawText(copyrights, new Font("Arial", 20, FontStyle.Regular), ColorTranslator.FromHtml("#757575"), ColorTranslator.FromHtml("#242424"));
+
+                    Master.callback.Invoke("ArmaSpotifyController", "set_album_info",
+                        string.Format("[[\"{0}\",{1},{2}],[\"{3}\",{4},{5}],[\"{6}\",{7},{8}],\"{9}\"]",
+                            playlist_title_image[0],
+                            playlist_title_image[1],
+                            playlist_title_image[2],
+                            playlist_subtitle_image[0],
+                            playlist_subtitle_image[1],
+                            playlist_subtitle_image[2],
+                            playlist_copyright_image[0],
+                            playlist_copyright_image[1],
+                            playlist_copyright_image[2],
+                            playlist_logo_image
+                        )
+                    );
+                }
+                else
+                {
+                    Log.Message("'LoadAlbum' Error: " + info_response.StatusCode.ToString());
+                    Log.Message(info_response.ReasonPhrase);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Message("'LoadAlbum' exception: " + e.ToString());
+            }
+        }
+
         internal async static Task LoadPlaylist(string variable, string playlist_id, int offset = 0)
         {
             try
@@ -1861,15 +2031,16 @@ namespace ArmaSpotifyController
                 Variable.client.DefaultRequestHeaders.Clear();
                 Variable.client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Variable.client_access_token);
 
-                var response = await Variable.client.GetAsync("https://api.spotify.com/v1/playlists/" + playlist_id + "?limit=50&offset=" + offset.ToString() + "&market=" + Variable.client_country);
+                var items_response = await Variable.client.GetAsync("https://api.spotify.com/v1/playlists/" + playlist_id + "/tracks?limit=50&offset=" + offset.ToString() + "&market=" + Variable.client_country);
+                var info_response = await Variable.client.GetAsync("https://api.spotify.com/v1/playlists/" + playlist_id + "?fields=name%2Cdescription%2Cimages");
 
-                if (response.IsSuccessStatusCode)
+                if (items_response.IsSuccessStatusCode)
                 {
                     var serializer = new JavaScriptSerializer();
-                    Classes.PlaylistItems.Root data = serializer.Deserialize<Classes.PlaylistItems.Root>(await response.Content.ReadAsStringAsync());
+                    Classes.PlaylistItems.Root data = serializer.Deserialize<Classes.PlaylistItems.Root>(await items_response.Content.ReadAsStringAsync());
 
                     List<string> tracks = new List<string>();
-                    foreach (Classes.PlaylistItems.Item item in data.tracks.items)
+                    foreach (Classes.PlaylistItems.Item item in data.items)
                     {
                         List<string> artists_list = new List<string>();
                         foreach (Classes.PlaylistItems.Artist artist in item.track.artists)
@@ -1886,7 +2057,7 @@ namespace ArmaSpotifyController
                         Master.callback.Invoke("ArmaSpotifyController", "append_textlist_playlist",
                             string.Format("[\"{0}\",\"{1}\",[\"{2}\",{3},{4}],[\"{5}\",{6},{7}],[\"{8}\",{9},{10}],\"{11}\",\"{12}\",{13},{14}]",
                                 variable,
-                                data.id,
+                                playlist_id,
                                 title_image[0],
                                 title_image[1],
                                 title_image[2],
@@ -1898,40 +2069,52 @@ namespace ArmaSpotifyController
                                 album_image[2],
                                 item.track.album.id,
                                 item.track.uri,
-                                data.tracks.total,
-                                data.tracks.offset
+                                data.total,
+                                data.offset
                             )
                         );
-
-                        Log.Message(data.tracks.total.ToString());
-                        Log.Message(data.tracks.offset.ToString());
                     }
-
-                    string playlist_logo_image = "";
-                    if (data.images.Count > 0)
-                    {
-                        playlist_logo_image = Image.DownloadImage(data.images[0].url).Result;
-                        Log.Message(playlist_logo_image);
-                    }
-                    string[] playlist_title_image = Image.DrawText(data.name, new Font("Arial", 19, FontStyle.Bold), Color.White, ColorTranslator.FromHtml("#242424"));
-                    string[] playlist_subtitle_image = Image.DrawText(data.description, new Font("Arial", 19, FontStyle.Regular), Color.White, ColorTranslator.FromHtml("#242424"));
-
-                    Master.callback.Invoke("ArmaSpotifyController", "set_playlist_info",
-                            string.Format("[[\"{0}\",{1},{2}],[\"{3}\",{4},{5}],\"{6}\"]",
-                                playlist_title_image[0],
-                                playlist_title_image[1],
-                                playlist_title_image[2],
-                                playlist_subtitle_image[0],
-                                playlist_subtitle_image[1],
-                                playlist_subtitle_image[2],
-                                playlist_logo_image
-                            )
-                        );
                 }
                 else
                 {
-                    Log.Message("'LoadPlaylist' Error: " + response.StatusCode.ToString());
-                    Log.Message(response.ReasonPhrase);
+                    Log.Message("'LoadPlaylist' Error: " + items_response.StatusCode.ToString());
+                    Log.Message(items_response.ReasonPhrase);
+                }
+
+                if (info_response.IsSuccessStatusCode)
+                {
+                    var serializer = new JavaScriptSerializer();
+                    Classes.PlaylistInfo.Root data = serializer.Deserialize<Classes.PlaylistInfo.Root>(await info_response.Content.ReadAsStringAsync());
+
+                    string playlist_logo_image = "";
+                    if (data.images.Count > 1)
+                    {
+                        playlist_logo_image = Image.DownloadImage(data.images[data.images.FindIndex(a => int.Parse(a.height.ToString()) == 300 && int.Parse(a.width.ToString()) == 300)].url).Result;
+                    }
+                    else
+                    {
+                        playlist_logo_image = Image.DownloadImage(data.images[0].url).Result;
+                    };
+
+                    string[] playlist_title_image = Image.DrawText(data.name, new Font("Arial", 28, FontStyle.Bold), Color.White, ColorTranslator.FromHtml("#242424"));
+                    string[] playlist_subtitle_image = Image.DrawText(data.description, new Font("Arial", 22, FontStyle.Regular), ColorTranslator.FromHtml("#969696"), ColorTranslator.FromHtml("#242424"));
+
+                    Master.callback.Invoke("ArmaSpotifyController", "set_playlist_info",
+                        string.Format("[[\"{0}\",{1},{2}],[\"{3}\",{4},{5}],\"{6}\"]",
+                            playlist_title_image[0],
+                            playlist_title_image[1],
+                            playlist_title_image[2],
+                            playlist_subtitle_image[0],
+                            playlist_subtitle_image[1],
+                            playlist_subtitle_image[2],
+                            playlist_logo_image
+                        )
+                    );
+                }
+                else
+                {
+                    Log.Message("'LoadPlaylist' Error: " + info_response.StatusCode.ToString());
+                    Log.Message(info_response.ReasonPhrase);
                 }
             }
             catch (Exception e)
@@ -2419,6 +2602,26 @@ namespace ArmaSpotifyController
                 
     }
 
+    public class BackgroundRequests
+    {
+        internal static void LoadWebPlayer()
+        {
+            try
+            {
+                Variable.web.Url = new Uri(String.Format("file://{0}/js.html",Directory.GetCurrentDirectory()));
+                Log.Message(String.Format("file://{0}/js.html", Directory.GetCurrentDirectory()));
+
+                Variable.web.ScriptErrorsSuppressed = true;
+                
+            }
+            catch (Exception e)
+            {
+                Log.Message("'LoadWebPlayer' exception: " + e.ToString());
+            }
+        }
+                
+    }
+
     class Classes
     {
         internal class LikedSong
@@ -2880,34 +3083,147 @@ namespace ArmaSpotifyController
             }
         }
 
-        internal class PlaylistItems
+        internal class AlbumItems
         {
             public class ExternalUrls
             {
                 public string spotify { get; set; }
             }
 
-            public class Followers
+            public class Artist
             {
-                public object href { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public string name { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class Item
+            {
+                public List<Artist> artists { get; set; }
+                public int disc_number { get; set; }
+                public int duration_ms { get; set; }
+                public bool @explicit { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public bool is_local { get; set; }
+                public bool is_playable { get; set; }
+                public string name { get; set; }
+                public string preview_url { get; set; }
+                public int track_number { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class Root
+            {
+                public string href { get; set; }
+                public List<Item> items { get; set; }
+                public int limit { get; set; }
+                public string next { get; set; }
+                public int offset { get; set; }
+                public object previous { get; set; }
                 public int total { get; set; }
+            }
+        }
+
+        internal class AlbumInfo
+        {
+            public class ExternalUrls
+            {
+                public string spotify { get; set; }
+            }
+
+            public class Artist
+            {
+                public ExternalUrls external_urls { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public string name { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+
+            public class Copyright
+            {
+                public string text { get; set; }
+                public string type { get; set; }
+            }
+
+            public class ExternalIds
+            {
+                public string upc { get; set; }
             }
 
             public class Image
             {
-                public object height { get; set; }
+                public int height { get; set; }
                 public string url { get; set; }
-                public object width { get; set; }
+                public int width { get; set; }
             }
 
-            public class Owner
+            public class Item
             {
-                public string display_name { get; set; }
+                public List<Artist> artists { get; set; }
+                public List<object> available_markets { get; set; }
+                public int disc_number { get; set; }
+                public int duration_ms { get; set; }
+                public bool @explicit { get; set; }
                 public ExternalUrls external_urls { get; set; }
                 public string href { get; set; }
                 public string id { get; set; }
+                public bool is_local { get; set; }
+                public string name { get; set; }
+                public object preview_url { get; set; }
+                public int track_number { get; set; }
                 public string type { get; set; }
                 public string uri { get; set; }
+            }
+
+            public class Tracks
+            {
+                public string href { get; set; }
+                public List<Item> items { get; set; }
+                public int limit { get; set; }
+                public object next { get; set; }
+                public int offset { get; set; }
+                public object previous { get; set; }
+                public int total { get; set; }
+            }
+
+            public class Root
+            {
+                public string album_type { get; set; }
+                public List<Artist> artists { get; set; }
+                public List<object> available_markets { get; set; }
+                public List<Copyright> copyrights { get; set; }
+                public ExternalIds external_ids { get; set; }
+                public ExternalUrls external_urls { get; set; }
+                public List<object> genres { get; set; }
+                public string href { get; set; }
+                public string id { get; set; }
+                public List<Image> images { get; set; }
+                public string label { get; set; }
+                public string name { get; set; }
+                public int popularity { get; set; }
+                public string release_date { get; set; }
+                public string release_date_precision { get; set; }
+                public int total_tracks { get; set; }
+                public Tracks tracks { get; set; }
+                public string type { get; set; }
+                public string uri { get; set; }
+            }
+        }
+
+
+        internal class PlaylistItems
+        {
+            public class ExternalUrls
+            {
+                public string spotify { get; set; }
             }
 
             public class AddedBy
@@ -2927,6 +3243,13 @@ namespace ArmaSpotifyController
                 public string name { get; set; }
                 public string type { get; set; }
                 public string uri { get; set; }
+            }
+
+            public class Image
+            {
+                public int height { get; set; }
+                public string url { get; set; }
+                public int width { get; set; }
             }
 
             public class Album
@@ -2973,6 +3296,7 @@ namespace ArmaSpotifyController
                 public string id { get; set; }
                 public bool is_local { get; set; }
                 public bool is_playable { get; set; }
+                public LinkedFrom linked_from { get; set; }
                 public string name { get; set; }
                 public int popularity { get; set; }
                 public string preview_url { get; set; }
@@ -2980,7 +3304,6 @@ namespace ArmaSpotifyController
                 public int track_number { get; set; }
                 public string type { get; set; }
                 public string uri { get; set; }
-                public LinkedFrom linked_from { get; set; }
             }
 
             public class VideoThumbnail
@@ -2998,34 +3321,32 @@ namespace ArmaSpotifyController
                 public VideoThumbnail video_thumbnail { get; set; }
             }
 
-            public class Tracks
+            public class Root
             {
                 public string href { get; set; }
                 public List<Item> items { get; set; }
                 public int limit { get; set; }
-                public object next { get; set; }
+                public string next { get; set; }
                 public int offset { get; set; }
                 public object previous { get; set; }
                 public int total { get; set; }
             }
+        }
+
+        internal class PlaylistInfo
+        {
+            public class Image
+            {
+                public object height { get; set; }
+                public string url { get; set; }
+                public object width { get; set; }
+            }
 
             public class Root
             {
-                public bool collaborative { get; set; }
                 public string description { get; set; }
-                public ExternalUrls external_urls { get; set; }
-                public Followers followers { get; set; }
-                public string href { get; set; }
-                public string id { get; set; }
                 public List<Image> images { get; set; }
                 public string name { get; set; }
-                public Owner owner { get; set; }
-                public object primary_color { get; set; }
-                public bool @public { get; set; }
-                public string snapshot_id { get; set; }
-                public Tracks tracks { get; set; }
-                public string type { get; set; }
-                public string uri { get; set; }
             }
         }
 

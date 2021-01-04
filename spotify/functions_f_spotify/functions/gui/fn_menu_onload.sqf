@@ -68,21 +68,42 @@ if ((profileNamespace getVariable ["aasp_legal_update", ""]) != _last_update) ex
 "ArmaSpotifyController" callExtension "spotify:request_playlists";
 
 private _last_window = uinamespace getVariable ["aasp_last_window", "home"];
-switch _last_window do
+
+switch true do
 {
-	case "recent":
+	case (_last_window == "recent"):
 	{
 		call spotify_fnc_open_recent;
 	};
-	case "liked":
+	case (_last_window == "liked"):
 	{
 		call spotify_fnc_open_liked;
 	};
 	case (_last_window find "playlist:" == 0):
 	{
-		// Last viewed a playlist
+		private _info = _last_window splitString ":";
+		if (count _info >= 2) then
+		{
+			[_info#1] call spotify_fnc_open_playlist;
+		}
+		else
+		{
+			call spotify_fnc_open_home;
+		};
 	};
-	case "home";
+	case (_last_window find "album:" == 0):
+	{
+		private _info = _last_window splitString ":";
+		if (count _info >= 2) then
+		{
+			[_info#1] call spotify_fnc_open_album;
+		}
+		else
+		{
+			call spotify_fnc_open_home;
+		};
+	};
+	case (_last_window == "home");
 	default
 	{
 		// Open the last menu

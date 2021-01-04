@@ -1,4 +1,4 @@
-params ["_ctrl", "_button", "_xPos", "_yPos", "_shift", "_ctrl", "_alt", ["_id", "", [""]], ["_index", -1, [-1]], ["_liked_playlist", false, [false]]];
+params ["_ctrl", "_button", "_xPos", "_yPos", "_shift", "_ctrl", "_alt", ["_id", "", [""]], ["_index", -1, [-1]], ["_type", "track", [""]], ["_liked_playlist", false, [false]]];
 
 if (_id == "") exitWith {};
 
@@ -11,22 +11,29 @@ switch true do
 	// Left click
 	case (_button == LEFT):
 	{
-		if _ctrl then
+		switch _type do
 		{
-			"ArmaSpotifyController" callExtension ("spotify:append_track:" + _id);
-		}
-		else
-		{
-			if _liked_playlist then
+			case "track":
 			{
-				// Liked playlists are not actually playlists
-				// Therefore the require a work around to play a track from them
 				"ArmaSpotifyController" callExtension format["spotify:play_track:%1",_id];
-			}
-			else
+			};
+			case "playlist":
 			{
-				// Normal playlists can be done normally
-				"ArmaSpotifyController" callExtension format["spotify:play_playlist:%1:%2",_id,_index];
+				if _liked_playlist then
+				{
+					// Liked playlists are not actually playlists
+					// Therefore the require a work around to play a track from them
+					"ArmaSpotifyController" callExtension format["spotify:play_track:%1",_id];
+				}
+				else
+				{
+					// Normal playlists can be done normally
+					"ArmaSpotifyController" callExtension format["spotify:play_playlist:%1:%2",_id,_index];
+				};
+			};
+			case "album":
+			{
+				"ArmaSpotifyController" callExtension format["spotify:play_album:%1:%2",_id,_index];
 			};
 		};
 		playSound "click";

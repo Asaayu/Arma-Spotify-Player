@@ -8,5 +8,8 @@ private _display = uinamespace getVariable ["aasp_spotify_display", displaynull]
 // Delete any playlist control
 ctrlDelete (_display displayCtrl 87000);
 
+// Delete any album control
+ctrlDelete (_display displayCtrl 88000);
+
 // Delete any device control
 ctrlDelete (_display displayCtrl 50000);

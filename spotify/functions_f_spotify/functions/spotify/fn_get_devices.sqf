@@ -32,10 +32,24 @@ switch (toLower _mode) do
 		if (isNull _ctrl) then
 		{
 			_ctrl = _display ctrlCreate ["devices_control_group", 50000];
+			private _ctrl_pos = ctrlPosition _ctrl;
+			private _pos = ctrlPosition (_display displayCtrl 555);
+			private _diff = [(0.1 * safezoneX) - (_pos#0), (0.1 * safezoneY) - (_pos#1)];
+			_ctrl ctrlSetPosition
+			[
+				(_pos#0) + (0.8 * safezoneW) - (0.115 * safezoneW) - (0.035 * safezoneW),
+				(_pos#1) + (0.8 * safezoneH) - (0.25 * safezoneH),
+				_ctrl_pos#2,
+				_ctrl_pos#3
+			];
+			_ctrl ctrlCommit 0;
 		}
 		else
 		{
-			ctrlDelete _ctrl;
+			[_ctrl] spawn
+			{
+				ctrlDelete (_this#0);
+			};
 		};
 
 		if (isNull _display) exitWith {};

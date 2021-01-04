@@ -56,6 +56,9 @@ class ctrlCombo;
 // Premium Required GUI
 #include "premium.hpp"
 
+// Album control
+#include "windows\album.hpp"
+
 // Playlist control
 #include "windows\playlist.hpp"
 

@@ -63,6 +63,7 @@ class CfgFunctions
 			class open_recent {};
 			class open_liked {};
 			class open_playlist {};
+			class open_album {};
 
 			class close_menus {};
 
