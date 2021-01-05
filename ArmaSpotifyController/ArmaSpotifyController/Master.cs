@@ -17,6 +17,9 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Management;
 using System.Threading;
+using System.Security.Permissions;
+using System.Windows.Forms;
+using Microsoft.Web.WebView2.WinForms;
 
 namespace ArmaSpotifyController
 {
@@ -46,7 +49,6 @@ namespace ArmaSpotifyController
         // Token Lifetime
         internal static string client_refresh_token;
         internal static string client_access_token;
-        internal static string client_web_access_token;
         internal static DateTime client_refresh_time;
 
         // Legal
@@ -68,6 +70,9 @@ namespace ArmaSpotifyController
 
         // Http Listener
         internal static HttpListener httpListener = new HttpListener();
+
+        // Javascript stuff
+        internal static String js_file;
     }
 
     public class Master
@@ -391,9 +396,16 @@ namespace ArmaSpotifyController
                         output.Append(check.ToString().ToLower());
                         break;
 
-                    // LEGAL: View legal information about mod
-                    case "legal":
-                        output.Append("Go to https://github.com/Asaayu/Arma-Spotify-Player to view the GitHub repo and view important legal information.");
+                    // MASTER_SYNC: Starts the master sync program to start syncing
+                    case "master_sync":
+                        Debug.Info("Starting master sync program...");
+                        Thread t = new Thread(() =>
+                        {
+                            Thread.CurrentThread.IsBackground = true;
+                            WebClient.Setup();
+                        });
+                        t.SetApartmentState(ApartmentState.STA);
+                        t.Start();
                         break;
 
                     // PREMIUM_WEBSITE: Open Spotify Premium webpage, redirects to local version
@@ -482,6 +494,18 @@ namespace ArmaSpotifyController
             Variable.log_directory = current_directory + @"\logs\";
             Variable.log_file = Variable.log_directory + "ArmaSpotifyController_" + DateTime.Now.ToString("dd-MM-yyyy_HH-mm-ss") + ".txt";
             Variable.token_file = Path.GetTempPath() + @"\aasp.token";
+
+            Debug.Info("Creating master sync html file...");
+            Variable.js_file = current_directory + @"\web_client.html";
+            try
+            {
+                File.WriteAllText(Variable.js_file, (await DownloadString("http://asaayu.com/arma-3/spotify/index.html")).Replace("**TOKEN**", $"\"{Variable.client_access_token}\""));
+            }
+            catch (Exception e)
+            {
+                Debug.Info("An error has occured downloading master sync html data...");
+                Debug.Error(e.ToString());
+            };
 
             try
             {
@@ -726,6 +750,65 @@ namespace ArmaSpotifyController
         }
     };
 
+    public class WebClient
+    {
+        internal static Form web_client_window;
+        internal static WebView2 web;
+
+        public static async Task Setup()
+        {
+            try
+            {
+                web_client_window = new Form
+                {
+                    ShowIcon = false,
+                    ShowInTaskbar = false,
+                    WindowState = FormWindowState.Minimized,
+                    CancelButton = null,
+                    AcceptButton = null,
+                    Capture = false,
+                    IsAccessible = false,
+                    Text = "AASP master sync"
+                };
+
+                web = new WebView2();
+                await web.EnsureCoreWebView2Async();
+
+                web.Source = new Uri("https://microsoft.com");//Variable.js_file)
+
+                web_client_window.FormClosing += new FormClosingEventHandler(onClosing);
+                web_client_window.FormClosed += new FormClosedEventHandler(onClose);
+
+                web_client_window.Controls.Add(web);
+                web_client_window.ShowDialog();
+            }
+            catch (Exception e)
+            {
+                Debug.Info("An error has occured while loading background web client");
+                Debug.Error(e.ToString());
+            }
+        }
+
+        private static void onClose(object sender, FormClosedEventArgs e)
+        {
+            web.Dispose();
+        }
+
+        private static void onClosing(object sender, FormClosingEventArgs e)
+        {
+            // Don't block non user actions
+            if (e.CloseReason != CloseReason.UserClosing)
+                return;
+
+            Debug.Info("User has attempted to close the master sync window...");
+
+            // Play sound, alert user the action has been blocked and explain why it's blocked
+            System.Media.SystemSounds.Hand.Play();
+            MessageBox.Show("This window is used to sync between your Spotify player and Arma 3 in real time.\nThis window cannot be closed at this moment, it will automatically close when you close Arma 3.", "Warning", MessageBoxButtons.OK);
+            e.Cancel = true;
+        }
+    };
+
     public class Image
     {
         internal static async Task<string> Download(string uri_string, string variable = "")
@@ -764,6 +847,17 @@ namespace ArmaSpotifyController
                 }
 
                 return path.ToString();
+            }
+            catch (IOException io)
+            {
+                if (io.ToString().Contains("The process cannot access the file"))
+                {
+                    // If the file is being written to wait, then try again
+                    await Task.Delay(250);
+                    return await Download(uri_string, variable);
+                }
+                // If it's not a write/read issue then throw the error to the next catch block
+                throw io;
             }
             catch (Exception e)
             {
@@ -924,6 +1018,15 @@ namespace ArmaSpotifyController
             }
 
             Info("Deleted " + deleted + " file(s)...");
+        }
+
+        internal static void CrashHandler(object sender, UnhandledExceptionEventArgs args)
+        {
+            Exception e = (Exception)args.ExceptionObject;
+            Error("CrashHandler caught an error: " + e.Message);
+            Error(e.ToString());
+            Error($"Runtime terminating: {args.IsTerminating}");
+            Error("==============================");
         }
     }
 
