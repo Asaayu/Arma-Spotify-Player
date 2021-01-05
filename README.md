@@ -27,6 +27,7 @@ You can find a list of all the avaliable scopes [on the Spotify developer websit
 - [user-top-read](https://developer.spotify.com/documentation/general/guides/scopes/#user-top-read)
 - [user-library-modify](https://developer.spotify.com/documentation/general/guides/scopes/#user-library-modify)
 - [user-library-read](https://developer.spotify.com/documentation/general/guides/scopes/#user-library-read)
+- [streaming](https://developer.spotify.com/documentation/general/guides/scopes/#streaming)
 
 ---
 
