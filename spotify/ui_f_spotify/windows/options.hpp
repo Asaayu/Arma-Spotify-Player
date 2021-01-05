@@ -140,6 +140,7 @@ class options_control_group: ctrlControlsGroupNoHScrollbars
 			onLBSelChanged = "profilenamespace setVariable ['aasp_info_delay',(_this#0) lbValue (_this#1)]; saveProfileNamespace;";
 			class items
 			{
+				/*
 				class 3
 				{
 					text = "3s";
@@ -150,6 +151,7 @@ class options_control_group: ctrlControlsGroupNoHScrollbars
 					text = "4s";
 					value = 4;
 				};
+				*/
 				class 5
 				{
 					text = "5s";

@@ -543,8 +543,7 @@ addMissionEventHandler ["ExtensionCallback",
 		};
 		case ("reload_display"):
 		{
-			private _display = uinamespace getVariable ["aasp_spotify_display", displaynull];
-			_display closeDisplay 2;
+			closeDialog 2;
 			[] spawn
 			{
 				createDialog "AASP_spotify";
