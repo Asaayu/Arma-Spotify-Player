@@ -47,9 +47,9 @@ if !_request then
 // Save the last non-zero volume level
 if (_value > 0) then
 {
-	missionNamespace setVariable ["aasp_volume_last", _value];
+	uiNamespace setVariable ["aasp_volume_last", _value];
 };
-missionNamespace setVariable ["aasp_volume_variable", _value];
+uiNamespace setVariable ["aasp_volume_variable", _value];
 
 if _request then
 {

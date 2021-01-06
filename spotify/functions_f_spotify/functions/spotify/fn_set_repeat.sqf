@@ -7,7 +7,7 @@ params
 
 if _auto then
 {
-	private _current_mode = missionNamespace getVariable ["aasp_repeat_mode",""];
+	private _current_mode = uiNamespace getVariable ["aasp_repeat_mode",""];
 	private _modes = ["off","context","track"];
 	private _index = (_modes findIf {_x == _current_mode}) + 1;
 	if (_index >= 3) then
@@ -51,7 +51,7 @@ switch _mode do
 	};
 };
 
-missionNamespace setVariable ["aasp_repeat_mode",_mode];
+uiNamespace setVariable ["aasp_repeat_mode",_mode];
 
 if _request then
 {

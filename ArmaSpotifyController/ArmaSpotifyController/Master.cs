@@ -618,7 +618,8 @@ namespace ArmaSpotifyController
                 "user-top-read",
                 "user-modify-playback-state",
                 "user-library-modify",
-                "user-library-read"
+                "user-library-read",
+                "streaming"
             };
 
             // URL parameters
@@ -687,7 +688,7 @@ namespace ArmaSpotifyController
                             Variable.client_refresh_time = DateTime.Now.AddSeconds(3300);
 
                             // Callback to game to let it know user is authorised
-                            Master.callback.Invoke("ArmaSpotifyController", "setVariable", "[\"missionnamespace\", \"aasp_authorised\", true, false]");
+                            Master.callback.Invoke("ArmaSpotifyController", "setVariable", "[\"uinamespace\", \"aasp_authorised\", true, false]");
 
                             // Save user info to client variables in DLL for later use
                             await Request.GetUserInfo();
@@ -749,7 +750,7 @@ namespace ArmaSpotifyController
                 string filename = Path.GetFileNameWithoutExtension(uri.LocalPath);
 
                 // Create file path along with new extension
-                var path = Path.Combine(Variable.data_directory, Convert.ToBase64String(Encoding.UTF8.GetBytes(filename)) + ".jpg");
+                var path = Path.Combine(Variable.data_directory, filename + ".jpg");
 
                 if (!File.Exists(path.ToString()))
                 {
@@ -820,7 +821,7 @@ namespace ArmaSpotifyController
             byte[] sha_bytes = SHA256Managed.Create().ComputeHash(Encoding.UTF8.GetBytes(text));
             String filename = Convert.ToBase64String(sha_bytes).Split('=')[0].Replace('+', '-').Replace('/', '_');
 
-            var path = Path.Combine(Variable.data_directory, Convert.ToBase64String(Encoding.UTF8.GetBytes(filename + "_" + font.Size + "_" + font.Style + "_" + textColor.R.ToString() + textColor.G.ToString() + textColor.B.ToString() + textColor.A.ToString() + "_" + backColor.R.ToString() + backColor.G.ToString() + backColor.B.ToString() + backColor.A.ToString())) + ".jpg");
+            var path = Path.Combine(Variable.data_directory, filename + "_" + font.Size + "_" + font.Style + "_" + textColor.R.ToString() + textColor.G.ToString() + textColor.B.ToString() + textColor.A.ToString() + "_" + backColor.R.ToString() + backColor.G.ToString() + backColor.B.ToString() + backColor.A.ToString() + ".jpg");
 
             // Check if file already exists, if it does then don't bother creating another one
             if (File.Exists(@path.ToString()))
@@ -1149,7 +1150,7 @@ namespace ArmaSpotifyController
                     Debug.Info("=====================");
 
                     // Callback to game to let it know user info has been saved
-                    Master.callback.Invoke("ArmaSpotifyController", "setVariable", "[\"missionnamespace\", \"aasp_info_saved\", true, false]");
+                    Master.callback.Invoke("ArmaSpotifyController", "setVariable", "[\"uinamespace\", \"aasp_info_saved\", true, false]");
                 }
                 else
                 {

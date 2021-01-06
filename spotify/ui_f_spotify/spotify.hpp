@@ -112,7 +112,7 @@ class AASP_spotify
 			idc = 1020;
 			text = "\spotify\ui_f_spotify\data\icons\shuffle_ca.paa";
 			x = X(0.5) - W(0.04) - W(0.0125);
-			onButtonClick = "[!(missionNamespace getVariable ['aasp_shuffle_mode',false]), true] call spotify_fnc_set_shuffle;";
+			onButtonClick = "[!(uiNamespace getVariable ['aasp_shuffle_mode',false]), true] call spotify_fnc_set_shuffle;";
 			tooltip = "Shuffle";
 		};
 		class shuffle_dot: shuffle_button
@@ -408,7 +408,7 @@ class AASP_spotify
 			text = "\spotify\ui_f_spotify\data\icons\volume_high_ca.paa";
 			x = X(0.775) + W(0.0525);
 			tooltip = "Volume Button";
-			onButtonClick = "private _volume = missionNamespace getVariable ['aasp_volume_variable', 100]; if (_volume > 0) then { [0, true, true] call spotify_fnc_volume; } else { [missionNamespace getVariable ['aasp_volume_last', 100], true, true] call spotify_fnc_volume; }";
+			onButtonClick = "private _volume = uiNamespace getVariable ['aasp_volume_variable', 100]; if (_volume > 0) then { [0, true, true] call spotify_fnc_volume; } else { [uiNamespace getVariable ['aasp_volume_last', 100], true, true] call spotify_fnc_volume; }";
 		};
 		class volume_slider: playback_slider
                 {

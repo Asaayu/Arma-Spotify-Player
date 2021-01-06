@@ -5,7 +5,7 @@ params
 
 #define LOADED (uinamespace getVariable ['aasp_spotify_preloaded', false])
 
-// The very first time loading the extension will run all the serup items
+// The very first time loading the extension will run all the setup items
 if !LOADED then
 {
 	"ArmaSpotifyController" callExtension "init_load";

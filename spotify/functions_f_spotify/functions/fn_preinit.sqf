@@ -594,6 +594,12 @@ addMissionEventHandler ["ExtensionCallback",
 
 				// Increment the loop iteration number
 				missionNamespace setVariable ["aasp_master_loop_iteration", _loop_interation + 1];
+
+				if (uiNamespace getVariable ["aaps_master_sync", true]) then
+				{
+					"ArmaSpotifyController" callExtension "master_sync";
+					uiNamespace setVariable ["aaps_master_sync",false];
+				};
 			};
 		},
 		1

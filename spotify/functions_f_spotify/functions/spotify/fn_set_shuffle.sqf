@@ -9,7 +9,7 @@ private _button = _display displayCtrl 1020;
 private _dot = _display displayCtrl 1021;
 if (isNull _display) then {};
 
-missionNamespace setVariable ["aasp_shuffle_mode",_mode];
+uiNamespace setVariable ["aasp_shuffle_mode",_mode];
 _dot ctrlShow _mode;
 
 if _mode then
