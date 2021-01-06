@@ -21,10 +21,14 @@ using System.Security.Permissions;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.WinForms;
 
+
 namespace ArmaSpotifyController
 {
     public class Variable
     {
+        // Current directory
+        internal static string current_directory;
+
         // Image
         internal static string data_directory;
 
@@ -398,6 +402,35 @@ namespace ArmaSpotifyController
 
                     // MASTER_SYNC: Starts the master sync program to start syncing
                     case "master_sync":
+                        Debug.Info("Creating master sync html file...");
+                        Variable.js_file = Variable.current_directory + @"\web_client.html";
+                        try
+                        {
+                            // Get dealer list from spotify
+                            string dealer_list = await Internal.DownloadString("https://apresolve.spotify.com/?type=dealer&type=spclient");
+
+                            var serializer = new JavaScriptSerializer();
+                            Classes.Dealers.Root dealer_result = serializer.Deserialize<Classes.Dealers.Root>(dealer_list);
+
+                            if (dealer_result.dealer.Count <= 0)
+                                throw new Exception("Spotify did not return any dealers");
+
+                            string dealer = dealer_result.dealer[0];
+
+                            File.WriteAllText
+                            (
+                                Variable.js_file, 
+                                (await Internal.DownloadString("https://raw.githubusercontent.com/Asaayu/Arma-Spotify-Player/main/master_sync.html"))
+                                    .Replace("**TOKEN**", $"{Variable.client_access_token}")
+                                    .Replace("**DEALER**", $"{dealer}")
+                            );
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.Info("An error has occured downloading master sync html data...");
+                            Debug.Error(e.ToString());
+                        };
+
                         Debug.Info("Starting master sync program...");
                         Thread t = new Thread(() =>
                         {
@@ -487,25 +520,13 @@ namespace ArmaSpotifyController
         internal async static void Setup()
         {
             // Get current directory
-            String current_directory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            Variable.current_directory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
             // Save locations and files
-            Variable.data_directory = current_directory + @"\data\";
-            Variable.log_directory = current_directory + @"\logs\";
+            Variable.data_directory = Variable.current_directory + @"\data\";
+            Variable.log_directory = Variable.current_directory + @"\logs\";
             Variable.log_file = Variable.log_directory + "ArmaSpotifyController_" + DateTime.Now.ToString("dd-MM-yyyy_HH-mm-ss") + ".txt";
             Variable.token_file = Path.GetTempPath() + @"\aasp.token";
-
-            Debug.Info("Creating master sync html file...");
-            Variable.js_file = current_directory + @"\web_client.html";
-            try
-            {
-                File.WriteAllText(Variable.js_file, (await DownloadString("http://asaayu.com/arma-3/spotify/index.html")).Replace("**TOKEN**", $"\"{Variable.client_access_token}\""));
-            }
-            catch (Exception e)
-            {
-                Debug.Info("An error has occured downloading master sync html data...");
-                Debug.Error(e.ToString());
-            };
 
             try
             {
@@ -547,7 +568,7 @@ namespace ArmaSpotifyController
 
             Debug.Info("Connecting to GitHub...");
             Debug.Info("Downloading last legal update...");
-            Variable.legal_update = Internal.DownloadString(Variable.legal_update_file).Result;
+            //Variable.legal_update = Internal.DownloadString(Variable.legal_update_file).Result;
 
             // Check if token file exists            
             if (File.Exists(Variable.token_file))
@@ -642,7 +663,8 @@ namespace ArmaSpotifyController
                 "user-top-read",
                 "user-modify-playback-state",
                 "user-library-modify",
-                "user-library-read"
+                "user-library-read",
+                "streaming"
             };
 
             // URL parameters
@@ -755,7 +777,7 @@ namespace ArmaSpotifyController
         internal static Form web_client_window;
         internal static WebView2 web;
 
-        public static async Task Setup()
+        public static void Setup()
         {
             try
             {
@@ -768,19 +790,22 @@ namespace ArmaSpotifyController
                     AcceptButton = null,
                     Capture = false,
                     IsAccessible = false,
-                    Text = "AASP master sync"
+                    Text = "AASP Master Sync"
                 };
-
-                web = new WebView2();
-                await web.EnsureCoreWebView2Async();
-
-                web.Source = new Uri("https://microsoft.com");//Variable.js_file)
+                web = new WebView2
+                {
+                    Dock = DockStyle.Fill,
+                    Source = new Uri("http://bing.com/")
+                };
 
                 web_client_window.FormClosing += new FormClosingEventHandler(onClosing);
                 web_client_window.FormClosed += new FormClosedEventHandler(onClose);
+                web.SourceChanged += new EventHandler<Microsoft.Web.WebView2.Core.CoreWebView2SourceChangedEventArgs>(onSourceChanged);
 
                 web_client_window.Controls.Add(web);
                 web_client_window.ShowDialog();
+
+                Debug.Info("Master sync connected to local html file and ready to sync...");
             }
             catch (Exception e)
             {
@@ -806,6 +831,12 @@ namespace ArmaSpotifyController
             System.Media.SystemSounds.Hand.Play();
             MessageBox.Show("This window is used to sync between your Spotify player and Arma 3 in real time.\nThis window cannot be closed at this moment, it will automatically close when you close Arma 3.", "Warning", MessageBoxButtons.OK);
             e.Cancel = true;
+        }
+
+        private static void onSourceChanged(object sender, Microsoft.Web.WebView2.Core.CoreWebView2SourceChangedEventArgs e)
+        {
+            // Reconnect to the correct file
+            web.Source = new Uri("file://" + Variable.js_file);
         }
     };
 
