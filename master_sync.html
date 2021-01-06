@@ -11,22 +11,27 @@ const dealer = '**DEALER**';
 const token = '**TOKEN**';
 const name = 'AASP Master Sync';
 const socket = new WebSocket('wss://' + dealer +'/?access_token=' + token);
-
+var special_code;
+	
+	
 console.log(dealer);
 console.log(token);
 	
-	
-socket.addEventListener('open', function (event)
-{
-	socket.send('Hello Server!');
-});
-	
 socket.addEventListener('message', function (event)
 {
-	console.log(event.data);
+	var data = new String(event.data);
+	if (data.includes("Spotify-Connection-Id"))
+	{
+		var obj = JSON.parse(data);
+		special_code = obj.headers.Spotify-Connection-Id;
+		console.log(obj.headers.Spotify-Connection-Id);
+		console.log("Gathered special code, closing connection");
+
+		socket.close();
+	};
+	
+	
 });
-	
-	
 </script>
 </body>
 </html>
