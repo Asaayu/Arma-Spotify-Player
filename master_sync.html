@@ -13,7 +13,6 @@ const name = 'AASP Master Sync';
 const socket = new WebSocket('wss://' + dealer +'/?access_token=' + token);
 var special_code;
 	
-	
 console.log(dealer);
 console.log(token);
 	
@@ -22,9 +21,9 @@ socket.addEventListener('message', function (event)
 	var data = new String(event.data);
 	if (data.includes("Spotify-Connection-Id"))
 	{
-		var obj = JSON.parse(data);
-		special_code = obj.headers.Spotify-Connection-Id;
-		console.log(obj.headers.Spotify-Connection-Id);
+		var obj = JSON.parse(data.replace("Spotify-Connection-Id", "SpotifyConnectionId"));
+		special_code = obj.headers.SpotifyConnectionId;
+		console.log(obj.headers.SpotifyConnectionId);
 		console.log("Gathered special code, closing connection");
 
 		socket.close();
