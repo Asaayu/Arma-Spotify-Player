@@ -11,6 +11,10 @@ const dealer = '**DEALER**';
 const token = '**TOKEN**';
 const name = 'AASP Master Sync';
 const socket = new WebSocket('wss://' + dealer +'/?access_token=' + token);
+
+console.log(dealer);
+console.log(token);
+	
 	
 socket.addEventListener('open', function (event)
 {
