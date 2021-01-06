@@ -37,7 +37,7 @@ if (special_code == null)
 function main() 
 {
 	console.log("Running main");
-	socket = new WebSocket('wss://' + dealer +'/?access_token=' + token, "Sec-WebSocket-Version:13 Sec-WebSocket-Extensions:permessage-deflate Sec-WebSocket-Key:" + special_code);
+	socket = new WebSocket('wss://' + dealer +'/?access_token=' + token);
 
 	socket.onopen = function(e)
 	{
