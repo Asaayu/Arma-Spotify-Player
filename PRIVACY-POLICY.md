@@ -36,6 +36,7 @@ The personal information that this application holds is only avaliable on your c
 # Cookies
 This software including the relevent webpage used for authorisation does not use cookies.
 No third parties place cookies in your browser to collect information about your browsering information through this software and the relevent webpage used for authorisation.
+Be aware that Spotify **does** allow third parties to place cookies in your browser.
 
 # Changes to this Policy
 We may occasionally make changes to this Policy.
