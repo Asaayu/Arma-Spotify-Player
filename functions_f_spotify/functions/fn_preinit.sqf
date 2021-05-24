@@ -12,8 +12,8 @@ addMissionEventHandler ["ExtensionCallback",
 		case ("setvariable"):
 		{
 			private _array_data = parseSimpleArray _data;
-			_array_data params ["_namespace","_variable","_value","_global"];
-			(call compile _namespace) setVariable [_variable, _value, _global];
+			_array_data params [["_namespace","localnamespace",[""]],["_variable","",[""]],["_value", false, [false]]];
+			(call compile _namespace) setVariable [_variable, _value];
 		};
 		case ("ctrlsettext"):
 		{

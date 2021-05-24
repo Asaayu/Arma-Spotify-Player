@@ -29,6 +29,9 @@ namespace ArmaSpotifyController
         internal static String log_directory;
         internal static String log_file;
 
+        // Debug variable
+        internal static bool debug;
+
         // Token Saving
         internal static String token_file;
 
@@ -472,8 +475,17 @@ namespace ArmaSpotifyController
 
     public class Internal
     {
+        [DllImport("kernel32")]
+        static extern bool AllocConsole();
+
         internal async static void Setup()
         {
+            // Check for debug parameter
+            Variable.debug = Environment.CommandLine.Contains("-spotify_console");
+
+            if (Variable.debug)
+                AllocConsole();
+
             // Get current directory
             String current_directory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
@@ -514,6 +526,10 @@ namespace ArmaSpotifyController
                 };
             }
 
+            // Fix possible SSL/TLS issue when downloading strings
+            ServicePointManager.Expect100Continue = true;
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls12 | SecurityProtocolType.Ssl3;
+
             Debug.Info("Generating state key...");
 
             RNGCryptoServiceProvider generator = new RNGCryptoServiceProvider();
@@ -523,7 +539,7 @@ namespace ArmaSpotifyController
 
             Debug.Info("Connecting to GitHub...");
             Debug.Info("Downloading last legal update...");
-            Variable.legal_update = Internal.DownloadString(Variable.legal_update_file).Result;
+            Variable.legal_update = DownloadString(Variable.legal_update_file).Result;
 
             // Check if token file exists            
             if (File.Exists(Variable.token_file))
@@ -688,7 +704,7 @@ namespace ArmaSpotifyController
                             Variable.client_refresh_time = DateTime.Now.AddSeconds(3300);
 
                             // Callback to game to let it know user is authorised
-                            Master.callback.Invoke("ArmaSpotifyController", "setVariable", "[\"uinamespace\", \"aasp_authorised\", true, false]");
+                            Master.callback.Invoke("ArmaSpotifyController", "setVariable", "[\"uinamespace\", \"aasp_authorised\", true]");
 
                             // Save user info to client variables in DLL for later use
                             await Request.GetUserInfo();
@@ -878,9 +894,14 @@ namespace ArmaSpotifyController
         {
             try
             {
+                String text = DateTime.Now.ToString("[dd/MM/yyyy hh:mm:ss tt]") + "[" + prefix + "] " + message;
+
+                if (Variable.debug)
+                    Console.WriteLine(text);
+
                 using (StreamWriter sw = File.AppendText(Variable.log_file))
                 {
-                    sw.WriteLine(DateTime.Now.ToString("[dd/MM/yyyy hh:mm:ss tt]") + "[" + prefix + "] " + message);
+                    sw.WriteLine(text);
                 }
                 return true;
             }
@@ -1150,7 +1171,7 @@ namespace ArmaSpotifyController
                     Debug.Info("=====================");
 
                     // Callback to game to let it know user info has been saved
-                    Master.callback.Invoke("ArmaSpotifyController", "setVariable", "[\"uinamespace\", \"aasp_info_saved\", true, false]");
+                    Master.callback.Invoke("ArmaSpotifyController", "setVariable", "[\"uinamespace\", \"aasp_info_saved\", true]");
                 }
                 else
                 {
