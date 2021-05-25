@@ -91,7 +91,7 @@
 **Notices**
 
 33.  All notices to the Vendor under this Agreement are to be provided through the following means:
-Discord: `Asaayu#1337`
+Email: `ethanjohnson21888 at gmail.com`
 
 **EULA Updates**
 
