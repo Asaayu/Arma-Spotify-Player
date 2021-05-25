@@ -1,7 +1,6 @@
 # Asaayu's Arma Spotify Player
 ### Asaayu's Arma Spotify Player (AASP) is an in-game system to allow users to interact with their Spotify application through through Arma 3.
 
-**Although this is a working version of the mod, due to rate limiting and decisions made by Spotify this mod is on longer supported. No more work will be done on updating or fixing issues. If you would like to have a go yourself, feel free to fork this repo**
 ---
 
 ## EULA & Privacy Policy
