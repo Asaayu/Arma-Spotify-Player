@@ -50,6 +50,9 @@ class home_control_group: ctrlControlsGroupNoHScrollbars
 			class HScrollbar: ScrollBar
 			{
 				height = H(0.01);
+				color[] = {0.7,0.7,0.7,0.3};
+				colorActive[] = {0.7,0.7,0.7,0.3};
+				colorDisabled[] = {0.7,0.7,0.7,0.05};
 			};
 		};
 		class spacer_02: spacer_01
