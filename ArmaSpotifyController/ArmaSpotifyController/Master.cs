@@ -53,6 +53,10 @@ namespace ArmaSpotifyController
         internal static DateTime client_refresh_time;
 
         // Legal
+        internal static string blacklist_file = "https://raw.githubusercontent.com/Asaayu/Arma-Spotify-Player/main/blacklist.txt";
+        internal static string[] blacklist_list;
+        internal static bool blocked;
+
         internal static string legal_update_file = "https://raw.githubusercontent.com/Asaayu/Arma-Spotify-Player/main/legal_update.txt";
         internal static string legal_update;
 
@@ -119,6 +123,13 @@ namespace ArmaSpotifyController
 
             // Split on the spacers, in this case ":"
             String[] parameters = function.Split(':');
+
+            if (Variable.blocked)
+            {
+                Debug.Error("Request blocked by extension. Check Internet connection and restart client.");
+                output.Append("blocked");
+                return;
+            }
 
             // Check if the function starts with the word "Spotify"
             if (function.Length >= 7 && function.ToLower().Substring(0, 7) == "spotify")
@@ -444,6 +455,16 @@ namespace ArmaSpotifyController
                         Process.Start("https://open.spotify.com");
                         break;
 
+                    // DEAUTHORISE: Force deauthorise the current user and delete the token file
+                    case "deauthorise": //TODO
+                        Master.callback.Invoke("ArmaSpotifyController", "setVariable", "[\"uinamespace\", \"aasp_authorised\", false]");
+                        Variable.client_access_token = null;
+                        Variable.client_refresh_token = null;
+
+                        // Delete any token file that exists
+                        File.Delete(Variable.token_file);
+                        break;
+
                     // REVOKE: Open the webpage for users to revoke access to their Spotify account
                     case "revoke":
                         Process.Start("https://www.spotify.com/account/apps/");
@@ -540,6 +561,20 @@ namespace ArmaSpotifyController
             Debug.Info("Connecting to GitHub...");
             Debug.Info("Downloading last legal update...");
             Variable.legal_update = DownloadString(Variable.legal_update_file).Result;
+
+            Debug.Info("Downloading blacklist...");
+            Variable.blacklist_list = DownloadString(Variable.blacklist_file).Result.Split('\n');
+            if (Variable.blacklist_list.Length <= 0)
+            {
+                Debug.Info("Extension received bad data...");
+                Variable.blocked = true;
+            }
+            else if (Variable.blacklist_list.Contains("aa"))
+            {
+                Debug.Info("Extension blocked...");
+                Variable.blocked = true;
+            }
+
 
             // Check if token file exists            
             if (File.Exists(Variable.token_file))
