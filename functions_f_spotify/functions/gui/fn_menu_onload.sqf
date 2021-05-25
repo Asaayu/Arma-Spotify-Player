@@ -19,11 +19,6 @@ _display displayAddEventHandler
 				ctrlDelete (_display displayCtrl 50000);
 				true
 			};
-			case (ctrlShown (_display displayCtrl 55000) && {false}):
-			{
-				(_display displayCtrl 55000) ctrlShow false;
-				true
-			};
 			default
 			{
 				false
