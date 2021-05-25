@@ -211,12 +211,14 @@ addMissionEventHandler ["ExtensionCallback",
 			private _title = _display ctrlCreate ["ctrlActivePictureKeepAspect", -1, _title_holder];
 			_title ctrlSetPosition [0, 0, _image_width, _title_height * 0.98];
 			_title ctrlAddEventHandler ["MouseEnter", { [_this#0, 0.1 * safezoneW] spawn spotify_fnc_text_scroll }];
+			_title ctrlAddEventHandler ["ButtonClick", format["'ArmaSpotifyController' callExtension 'spotify:%1:%2'", _type, _id]];
 			_title ctrlSetActiveColor [1,1,1,1];
 			_title ctrlSetTextColor [1,1,1,1];
 			_title ctrlCommit 0;
 
 			private _coeff = (ctrlPosition _title#3)/(pixelH * _height);
 			_title ctrlSetText _url;
+			_title ctrlSetTooltip "Click to open the song in Spotify";
 			_title ctrlSetPositionX 0;
 			_title ctrlSetPositionW (pixelW * (_width * _coeff));
 			_title ctrlCommit 0;
