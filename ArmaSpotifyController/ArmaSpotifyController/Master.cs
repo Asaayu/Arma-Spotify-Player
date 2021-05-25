@@ -456,13 +456,13 @@ namespace ArmaSpotifyController
                         break;
 
                     // DEAUTHORISE: Force deauthorise the current user and delete the token file
-                    case "deauthorise": //TODO
-                        Master.callback.Invoke("ArmaSpotifyController", "setVariable", "[\"uinamespace\", \"aasp_authorised\", false]");
+                    case "deauthorise":
+                        // Reset the token variables
                         Variable.client_access_token = null;
                         Variable.client_refresh_token = null;
 
                         // Delete any token file that exists
-                        File.Delete(Variable.token_file);
+                        Internal.Token(1);
                         break;
 
                     // REVOKE: Open the webpage for users to revoke access to their Spotify account
@@ -733,7 +733,7 @@ namespace ArmaSpotifyController
                             Variable.client_refresh_token = result.refresh_token;
 
                             // Refresh token
-                            Internal.Token(0);
+                            Token(0);
 
                             // Set the refresh timer
                             Variable.client_refresh_time = DateTime.Now.AddSeconds(3300);
