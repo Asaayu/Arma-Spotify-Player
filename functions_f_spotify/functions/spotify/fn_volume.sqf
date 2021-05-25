@@ -22,27 +22,24 @@ if (_value == aasp_volume && {!_instant}) exitWith {};
 
 if (_slider getVariable ['aasp_seeking', false] && {!_seek}) exitWith {};
 
-if !_request then
+switch true do
 {
-	switch true do
+	case (_value > 50):
 	{
-		case (_value > 50):
-		{
-			_button ctrlSetText "\spotify\ui_f_spotify\data\icons\volume_high_ca.paa";
-		};
-		case (_value > 0):
-		{
-			_button ctrlSetText "\spotify\ui_f_spotify\data\icons\volume_low_ca.paa";
-		};
-		default
-		{
-			_button ctrlSetText "\spotify\ui_f_spotify\data\icons\volume_mute_ca.paa";
-		};
+		_button ctrlSetText "\spotify\ui_f_spotify\data\icons\volume_high_ca.paa";
 	};
-
-	// Incase this is called rather then through a user action
-	_slider sliderSetPosition _value;
+	case (_value > 0):
+	{
+		_button ctrlSetText "\spotify\ui_f_spotify\data\icons\volume_low_ca.paa";
+	};
+	default
+	{
+		_button ctrlSetText "\spotify\ui_f_spotify\data\icons\volume_mute_ca.paa";
+	};
 };
+
+// Incase this is called rather then through a user action
+_slider sliderSetPosition _value;
 
 // Save the last non-zero volume level
 if (_value > 0) then
