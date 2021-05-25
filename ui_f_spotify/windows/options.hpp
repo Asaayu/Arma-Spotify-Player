@@ -136,11 +136,20 @@ class options_control_group: ctrlControlsGroupNoHScrollbars
 			w = W(0.25);
 			h = H(0.02);
 			sizeEx = H(0.02);
-			onLoad = "(_this#0) lbSetCurSel (profilenamespace getVariable ['aasp_info_delay', 3])-3;";
+			onLoad = "(_this#0) lbSetCurSel ((profilenamespace getVariable ['aasp_info_delay', 3])-1);";
 			onLBSelChanged = "profilenamespace setVariable ['aasp_info_delay',(_this#0) lbValue (_this#1)]; saveProfileNamespace;";
 			class items
 			{
-				/*
+				class 1
+				{
+					text = "1s";
+					value = 1;
+				};
+				class 2
+				{
+					text = "2s";
+					value = 2;
+				};
 				class 3
 				{
 					text = "3s";
@@ -151,7 +160,6 @@ class options_control_group: ctrlControlsGroupNoHScrollbars
 					text = "4s";
 					value = 4;
 				};
-				*/
 				class 5
 				{
 					text = "5s";
