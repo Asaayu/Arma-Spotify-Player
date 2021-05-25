@@ -18,7 +18,7 @@ if (_value isEqualType "") then
 // Slider eventhandlers are called on display killed
 // This fixes that issue
 if (isNil "aasp_volume") then { aasp_volume = 100; };
-if (_value == aasp_volume) exitWith {};
+if (_value == aasp_volume && {!_instant}) exitWith {};
 
 if (_slider getVariable ['aasp_seeking', false] && {!_seek}) exitWith {};
 
