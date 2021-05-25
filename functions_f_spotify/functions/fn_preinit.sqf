@@ -581,7 +581,7 @@ addMissionEventHandler ["ExtensionCallback",
 				private _slider_range = sliderRange _seek;
 				private _new_position = sliderPosition _seek + ([0,1] select _playing);
 
-				if (_loop_interation >= _delay || _new_position > _slider_range#1) then
+				if (_loop_interation >= (_delay max 1) || _new_position > _slider_range#1) then
 				{
 					// Request update
 					"ArmaSpotifyController" callExtension "spotify:request_info";
