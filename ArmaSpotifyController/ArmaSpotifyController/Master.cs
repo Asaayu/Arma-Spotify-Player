@@ -57,6 +57,8 @@ namespace ArmaSpotifyController
         internal static string[] blacklist_list;
         internal static bool blocked;
 
+        internal static string steam_id = Environment.GetEnvironmentVariable("STEAMID");
+
         internal static string legal_update_file = "https://raw.githubusercontent.com/Asaayu/Arma-Spotify-Player/main/legal_update.txt";
         internal static string legal_update;
 
@@ -563,13 +565,13 @@ namespace ArmaSpotifyController
             Variable.legal_update = DownloadString(Variable.legal_update_file).Result;
 
             Debug.Info("Downloading blacklist...");
-            Variable.blacklist_list = DownloadString(Variable.blacklist_file).Result.Split('\n');
-            if (Variable.blacklist_list.Length <= 0)
+            Variable.blacklist_list = DownloadString(Variable.blacklist_file).Result.Trim().Split('\n');
+            if (Variable.blacklist_list.Length <= 1)
             {
                 Debug.Info("Extension received bad data...");
                 Variable.blocked = true;
             }
-            else if (Variable.blacklist_list.Contains("aa"))
+            else if (Variable.blacklist_list.Contains(Variable.steam_id))
             {
                 Debug.Info("Extension blocked...");
                 Variable.blocked = true;
@@ -2615,7 +2617,6 @@ namespace ArmaSpotifyController
                                 else
                                 {
                                     // This is a local file - ignore images and stuff like that
-
                                     string callback_data = string.Format("[{0},{1},{2},{3},\"{4}\",{5},{6},\"{7}\",\"{8}\",{9}]", playing, nsfw, length, progress, "", volume, shuffle, repeat, "", true);
                                     Master.callback.Invoke("ArmaSpotifyController", "spotify_fnc_update_display", callback_data);
 
