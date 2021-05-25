@@ -398,6 +398,7 @@ addMissionEventHandler ["ExtensionCallback",
 
 			private _link = _display ctrlCreate ["ctrlActivePicture", _index + 1, _ctrl];
 			_link ctrlSetText "\spotify\ui_f_spotify\data\icons\link_ca.paa";
+			_link ctrlSetTooltip "Open this song in Spotify";
 			_link ctrlSetPosition [_x_value + (0.01 * safeZoneW), _y_value + (0.0025 * safeZoneH), 0.0114 * safeZoneW, 0.0114 * 1.75 * safeZoneH];
 			_link ctrlAddEventHandler ["ButtonClick", format["'ArmaSpotifyController' callExtension '%1'",_song_uri]];
 			_link ctrlCommit 0;
