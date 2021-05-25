@@ -91,7 +91,7 @@
 **Notices**
 
 33.  All notices to the Vendor under this Agreement are to be provided through the following means:
-Email: `ethanjohnson21888 at gmail.com`
+Email: `ethanjohnson21888 at googlemail dot com`
 
 **EULA Updates**
 
