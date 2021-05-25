@@ -289,11 +289,13 @@ class AASP_spotify
 					text = "Home";
 					picture = "\spotify\ui_f_spotify\data\icons\home_ca.paa";
 				};
+				/*
 				class browse
 				{
 					text = "Browse";
 					picture = "\spotify\ui_f_spotify\data\icons\browse_ca.paa";
 				};
+				*/
 			};
 		};
 		class your_library: ctrlStatic
@@ -356,7 +358,7 @@ class AASP_spotify
 			x = X(0.1);
 			y = Y(0.45) + HI(0.0125);
 			w = W(0.8/8);
-			h = H(0.03*9);
+			h = H(0.03*10.5);
 		};
 		class playlist_selection_load: ctrlButton
 		{
@@ -364,20 +366,13 @@ class AASP_spotify
 			show = 0;
 			text = "Load More Playlists";
 			x = X(0.1);
-			y = Y(0.1) + H(0.8) - H(0.8/10) - H(0.06);
+			y = Y(0.1) + H(0.8) - H(0.8/10) - H(0.03);
 			w = W(0.8/8);
 			h = H(0.03);
 			sizeEx = H(0.02);
 			colorBackground[] = {0.1,0.1,0.1,1};
 			font = "RobotoCondensedBold";
 			shadow = 0;
-		};
-		class create_playlist: playlist_selection_load
-                {
-			idc = -1;
-			show = 0;
-			text = "Create a new playlist";
-			y = Y(0.1) + H(0.8) - H(0.8/10) - H(0.03);
 		};
 
 		// Right hand bottom buttons
