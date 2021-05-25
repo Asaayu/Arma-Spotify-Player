@@ -5,10 +5,10 @@ if (!is3DEN && {!dialog}) then
 	if (_last_open <= diag_tickTime) then
 	{
 		createDialog "AASP_spotify";
-		missionNamespace setVariable ["aasp_last_open", diag_tickTime + 2];
+		missionNamespace setVariable ["aasp_last_open", diag_tickTime + 1];
 	}
 	else
 	{
-		systemChat "Stop trying to open the AASP menu too fast!";
+		systemChat "You need to wait at least a second between opening the menu.";
 	};
 };
