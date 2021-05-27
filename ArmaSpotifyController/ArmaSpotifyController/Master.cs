@@ -29,14 +29,17 @@ namespace ArmaSpotifyController
         internal static string data_directory;
 
         // Logging
-        internal static String log_directory;
-        internal static String log_file;
+        internal static string log_directory;
+        internal static string log_file;
+
+        // Background player
+        internal static string js_data;
 
         // Debug variable
         internal static bool debug;
 
         // Token Saving
-        internal static String token_file;
+        internal static string token_file;
 
         // Request
         internal static readonly int refresh_delay = 250;
@@ -487,13 +490,24 @@ namespace ArmaSpotifyController
 
                     // BACKGROUND_PLAYER: Create the background player for Spotify
                     case "background_player":
-                        Debug.Info("Starting background player window...");
-                        Thread t = new Thread(async () =>
+                        Debug.Info("Getting background player html data...");                        
+                        try
+                        {
+                            Variable.js_data = (await Internal.DownloadString("http://asaayu.com/arma-3/spotify/index.html")).Replace("**TOKEN**", $"{Variable.client_access_token}");
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.Info("An error has occured downloading background player html data...");
+                            Debug.Error(e.ToString());
+                        };
+
+                        Debug.Info("Starting background player program...");
+                        Thread t = new Thread(() =>
                         {
                             Thread.CurrentThread.IsBackground = true;
-                            await WebClient.Setup();
+                            WebClient.Setup();
                         });
-                        //t.SetApartmentState(ApartmentState.STA);
+                        t.SetApartmentState(ApartmentState.STA);
                         t.Start();
                         break;
 
@@ -687,6 +701,7 @@ namespace ArmaSpotifyController
                 "user-modify-playback-state",
                 "user-library-modify",
                 "user-library-read",
+                "user-read-email",
                 "streaming"
             };
 
@@ -767,6 +782,7 @@ namespace ArmaSpotifyController
                         {
                             Debug.Info("Error: " + response.StatusCode.ToString());
                             Debug.Info(response.ReasonPhrase);
+                            Debug.Info(await response.Content.ReadAsStringAsync());
                         }
                     }
                     else
@@ -799,6 +815,7 @@ namespace ArmaSpotifyController
     {
         internal static Form web_client_window;
         internal static WebView2 web;
+        internal static bool page_loaded;
 
         public static void Setup()
         {
@@ -806,24 +823,25 @@ namespace ArmaSpotifyController
             {
                 web_client_window = new Form
                 {
-                    ShowIcon = false,
-                    ShowInTaskbar = false,
-                    WindowState = FormWindowState.Minimized,
-                    CancelButton = null,
-                    AcceptButton = null,
-                    Capture = false,
-                    IsAccessible = false,
+                    //ShowIcon = false,
+                    //ShowInTaskbar = false,
+                    //WindowState = FormWindowState.Minimized,
+                    //CancelButton = null,
+                    //AcceptButton = null,
+                    //Capture = false,
+                    //IsAccessible = false,
                     Text = "AASP Master Sync"
                 };
                 web = new WebView2
                 {
                     Dock = DockStyle.Fill,
-                    Source = new Uri("http://bing.com/")
+                    Source = new Uri("https://bing.com/")
                 };
 
                 web_client_window.FormClosing += new FormClosingEventHandler(onClosing);
                 web_client_window.FormClosed += new FormClosedEventHandler(onClose);
                 web.SourceChanged += new EventHandler<Microsoft.Web.WebView2.Core.CoreWebView2SourceChangedEventArgs>(onSourceChanged);
+                web.ContentLoading += new EventHandler<Microsoft.Web.WebView2.Core.CoreWebView2ContentLoadingEventArgs>(onContentLoading);
 
                 web_client_window.Controls.Add(web);
                 web_client_window.ShowDialog();
@@ -858,8 +876,20 @@ namespace ArmaSpotifyController
 
         private static void onSourceChanged(object sender, Microsoft.Web.WebView2.Core.CoreWebView2SourceChangedEventArgs e)
         {
-            // Reconnect to the correct file
-            //web.Source = new Uri("file://" + Variable.js_file);
+            // Reconnect to the correct data
+            Debug.Info($"Redirecting to background player file");
+            web.NavigateToString(Variable.js_data);
+        }
+        
+        private static void onContentLoading(object sender, Microsoft.Web.WebView2.Core.CoreWebView2ContentLoadingEventArgs e)
+        {
+            if (!page_loaded)
+            {
+                Debug.Info($"Redirecting to background player file");
+                web.NavigateToString(Variable.js_data);
+                Debug.Info(Variable.js_data);
+                page_loaded = true;
+            }
         }
     };
 
