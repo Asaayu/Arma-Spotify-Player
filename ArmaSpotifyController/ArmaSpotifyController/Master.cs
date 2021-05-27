@@ -17,6 +17,9 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Management;
 using System.Threading;
+using System.Security.Permissions;
+using System.Windows.Forms;
+using Microsoft.Web.WebView2.WinForms;
 
 namespace ArmaSpotifyController
 {
@@ -482,6 +485,18 @@ namespace ArmaSpotifyController
                         Process.Start("https://github.com/Asaayu/Arma-Spotify-Player/blob/main/PRIVACY-POLICY.md");
                         break;
 
+                    // BACKGROUND_PLAYER: Create the background player for Spotify
+                    case "background_player":
+                        Debug.Info("Starting background player window...");
+                        Thread t = new Thread(async () =>
+                        {
+                            Thread.CurrentThread.IsBackground = true;
+                            await WebClient.Setup();
+                        });
+                        //t.SetApartmentState(ApartmentState.STA);
+                        t.Start();
+                        break;
+
                     // LEGAL_UPDATE: Get the EULA & Privacy Policy last update time
                     case "legal_update":
                         output.Append(Variable.legal_update);
@@ -777,6 +792,80 @@ namespace ArmaSpotifyController
             {
                 Debug.Info(e.ToString());
             }
+        }
+    };
+
+    public class WebClient
+    {
+        internal static Form web_client_window;
+        internal static WebView2 web;
+
+        public static async Task Setup()
+        {
+            try
+            {
+                web_client_window = new Form
+                {
+                    ShowIcon = false,
+                    ShowInTaskbar = false,
+                    WindowState = FormWindowState.Minimized,
+                    CancelButton = null,
+                    AcceptButton = null,
+                    Capture = false,
+                    IsAccessible = false,
+                    Text = "AASP Background Player"
+                };
+
+                Debug.Info("Creating background player html file...");
+                string web_url = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\web_client.html";
+                string file_contents = (await Internal.DownloadString("http://asaayu.com/arma-3/spotify/index.html")).Replace("**TOKEN**", $"\"{Variable.client_access_token}\"");
+                Debug.Info(file_contents);
+                File.WriteAllText(web_url, file_contents);
+                
+                Debug.Info("a");
+                web = new WebView2();
+                await web.EnsureCoreWebView2Async();
+                
+                //web.Source = new Uri("file://" + web_url);
+                Debug.Info("b");
+                //web_client_window.FormClosing += new FormClosingEventHandler(onClosing);
+                //web_client_window.FormClosed += new FormClosedEventHandler(onClose);
+                Debug.Info("c");
+                //web_client_window.Controls.Add(web);
+                Debug.Info("d");
+                //web_client_window.Show();
+                Debug.Info("e");
+                //web_client_window.ShowDialog();
+                Debug.Info("f");
+                //web_client_window.Activate();
+
+                Debug.Info("Background player is now running.");
+            }
+            catch (Exception e)
+            {
+                Debug.Info("An error has occured while loading background web client");
+                Debug.Error(e.ToString());
+            }
+        }
+
+        private static void onClose(object sender, FormClosedEventArgs e)
+        {
+            web.Dispose();
+            Debug.Info("Disposing the background web viewer");
+        }
+
+        private static void onClosing(object sender, FormClosingEventArgs e)
+        {
+            // Don't block non user actions
+            if (e.CloseReason != CloseReason.UserClosing)
+                return;
+
+            Debug.Info("User has attempted to close the master sync window...");
+
+            // Play sound, alert user the action has been blocked and explain why it's blocked
+            System.Media.SystemSounds.Hand.Play();
+            MessageBox.Show("This window is used to sync between your Spotify player and Arma 3 in real time.\nThis window cannot be closed at this moment, it will automatically close when you close Arma 3.", "Warning", MessageBoxButtons.OK);
+            e.Cancel = true;
         }
     };
 
