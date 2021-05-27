@@ -47,6 +47,6 @@ Please, therefore, make sure you read any such notice carefully.
 
 # Contact the author
 The author of this software can be contacted through the following means:
-Discord: `Asaayu#1337`
+Email: `ethanjohnson21888 at googlemail dot com`
 
 ALL COPIES OF THIS SOFTWARE MUST CONTAIN THIS PRIVACY POLICEY, THE LICENSE, SOFTWARE END-USER LICENSE AGREEMENT, AND README.
