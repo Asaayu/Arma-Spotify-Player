@@ -800,7 +800,7 @@ namespace ArmaSpotifyController
         internal static Form web_client_window;
         internal static WebView2 web;
 
-        public static async Task Setup()
+        public static void Setup()
         {
             try
             {
@@ -813,33 +813,22 @@ namespace ArmaSpotifyController
                     AcceptButton = null,
                     Capture = false,
                     IsAccessible = false,
-                    Text = "AASP Background Player"
+                    Text = "AASP Master Sync"
+                };
+                web = new WebView2
+                {
+                    Dock = DockStyle.Fill,
+                    Source = new Uri("http://bing.com/")
                 };
 
-                Debug.Info("Creating background player html file...");
-                string web_url = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\web_client.html";
-                string file_contents = (await Internal.DownloadString("http://asaayu.com/arma-3/spotify/index.html")).Replace("**TOKEN**", $"\"{Variable.client_access_token}\"");
-                Debug.Info(file_contents);
-                File.WriteAllText(web_url, file_contents);
-                
-                Debug.Info("a");
-                web = new WebView2();
-                await web.EnsureCoreWebView2Async();
-                
-                //web.Source = new Uri("file://" + web_url);
-                Debug.Info("b");
-                //web_client_window.FormClosing += new FormClosingEventHandler(onClosing);
-                //web_client_window.FormClosed += new FormClosedEventHandler(onClose);
-                Debug.Info("c");
-                //web_client_window.Controls.Add(web);
-                Debug.Info("d");
-                //web_client_window.Show();
-                Debug.Info("e");
-                //web_client_window.ShowDialog();
-                Debug.Info("f");
-                //web_client_window.Activate();
+                web_client_window.FormClosing += new FormClosingEventHandler(onClosing);
+                web_client_window.FormClosed += new FormClosedEventHandler(onClose);
+                web.SourceChanged += new EventHandler<Microsoft.Web.WebView2.Core.CoreWebView2SourceChangedEventArgs>(onSourceChanged);
 
-                Debug.Info("Background player is now running.");
+                web_client_window.Controls.Add(web);
+                web_client_window.ShowDialog();
+
+                Debug.Info("Master sync connected to local html file and ready to sync...");
             }
             catch (Exception e)
             {
@@ -851,7 +840,6 @@ namespace ArmaSpotifyController
         private static void onClose(object sender, FormClosedEventArgs e)
         {
             web.Dispose();
-            Debug.Info("Disposing the background web viewer");
         }
 
         private static void onClosing(object sender, FormClosingEventArgs e)
@@ -866,6 +854,12 @@ namespace ArmaSpotifyController
             System.Media.SystemSounds.Hand.Play();
             MessageBox.Show("This window is used to sync between your Spotify player and Arma 3 in real time.\nThis window cannot be closed at this moment, it will automatically close when you close Arma 3.", "Warning", MessageBoxButtons.OK);
             e.Cancel = true;
+        }
+
+        private static void onSourceChanged(object sender, Microsoft.Web.WebView2.Core.CoreWebView2SourceChangedEventArgs e)
+        {
+            // Reconnect to the correct file
+            //web.Source = new Uri("file://" + Variable.js_file);
         }
     };
 
