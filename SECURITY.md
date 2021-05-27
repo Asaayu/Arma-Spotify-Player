@@ -29,4 +29,4 @@ To submit a security report please contact the lead maintainer `Asaayu#1337` on 
 - :x: Any issues that occur with the Spotify Platform, Spotify Service or any Spotify content. Those security issues should be reported [directly to Spotify](https://hackerone.com/spotify).
 
 ## Questions or Querys
-If you have any questions or querys please contact the lead maintainer `Asaayu#1337` on Discord.
+If you have any questions or querys please contact the lead maintainer at `ethanjohnson21888 at googlemail dot com`.
