@@ -298,7 +298,7 @@ class options_control_group: ctrlControlsGroupNoHScrollbars
 		};
 		class revoke_access: ctrlButton
 		{
-			text = "Revoke Spotify Access";
+			text = "Revoke Spotify Account Access";
 			tooltip = "Opens the webpage to remove this mod's access to your Spotify account.\nThis will revoke future token requests, meaning actions done under the current token will still work until the automated token refresh fails and the mod will require authorization again.";
 			x = W(0.6/2) - W(0.105);
 			y = LHX(27);
@@ -315,7 +315,7 @@ class options_control_group: ctrlControlsGroupNoHScrollbars
 			w = W(0.1);
 			text = "Revoke Authorization";
 			tooltip = "Forces the mod to revoke the current users authorisation and deletes any token files saved.";
-			onButtonClick = "'ArmaSpotifyController' callExtension 'deauthorise'; (ctrlParent (_this#0)) closeDisplay 0; [] spawn {createDialog 'AASP_spotify';}";
+			onButtonClick = "'ArmaSpotifyController' callExtension 'deauthorise'; (ctrlParent (_this#0)) closeDisplay 0; uinamespace setVariable ['aasp_authorisation_restart_required', true]; [] spawn {createDialog 'AASP_spotify';}";
 		};
 		class legal_05: legal_01
 		{

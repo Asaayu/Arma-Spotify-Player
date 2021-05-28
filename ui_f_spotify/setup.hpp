@@ -115,7 +115,7 @@ class AASP_setup
 			idc = 15006;
 			text = "AUTHORISE";
 			x = X(0.5) - W(0.2/2);
-			y = Y(0.1125) + H(0.5);
+			y = Y(0.1125) + H(0.6);
 			w = W(0.2);
 			h = H(0.03);
                         shadow = 2;
@@ -124,43 +124,8 @@ class AASP_setup
 			colorBackground[] = {"profilenamespace getvariable ['GUI_BCG_RGB_R',0.77]","profilenamespace getvariable ['GUI_BCG_RGB_G',0.51]","profilenamespace getvariable ['GUI_BCG_RGB_B',0.08]",1};
 			colorBackgroundActive[] = {0,0,0,1};
 			colorText[] = {1,1,1,1};
-		};/*
-		class access_token_title: title
-                {
-			idc = 15007;
-			show = 0;
-			text = "Once you've authorised the connection you will be given a unique identifier to input into the box below to finalize the connection.";
-			y = Y(0.1125) + H(0.54);
-			h = H(0.03);
-                        sizeEx = H(0.03);
+			onLoad = "if (uinamespace getVariable ['aasp_authorisation_restart_required', false]) then {(_this#0) ctrlEnable false; (_this#0) ctrlSetTooltip 'You need to restart your game after deauthorising an account before you can reauthorise a new Spotify account';}";
 		};
-		class access_token: ctrlEdit
-                {
-			idc = 15008;
-			show = 0;
-			text = "";
-			x = X(0.5) - W(0.5/2);
-			y = Y(0.1125) + H(0.58);
-			w = W(0.5);
-			h = H(0.03);
-			sizeEx = H(0.03);
-                        font = "RobotoCondensed";
-		};
-		class connect_button: authorise_button
-                {
-			idc = 15009;
-			show = 0;
-			text = "CONNECT";
-			y = Y(0.1125) + H(0.63);
-		};
-		class connect_error: access_token_title
-                {
-			idc = 15010;
-			show = 0;
-			text = "";
-			y = Y(0.1125) + H(0.68);
-			colorText[] = {1,0,0,1};
-		};*/
 		class legal_footer_01: ctrlStatic
                 {
 			idc = 15011;
