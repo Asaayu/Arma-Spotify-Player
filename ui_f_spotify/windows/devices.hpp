@@ -22,6 +22,7 @@ class devices_control_group: ctrlControlsGroupNoHScrollbars
 			idc = 105;
 			style = 2;
 			text = "Connect to a device";
+			tooltip = "If the 'Arma Spotify Player' device does not appear in the list\nclick the options button at the top right of the Spotify window\nthen click the 'Restart Background Player' button";
 			x = 0;
 			y = 0;
 			w = W(0.115) - W(0.015);

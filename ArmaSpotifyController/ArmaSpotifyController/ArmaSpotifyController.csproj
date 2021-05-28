@@ -71,6 +71,9 @@
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+  <PropertyGroup>
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Costura, Version=5.3.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Costura.Fody.5.3.0\lib\netstandard1.0\Costura.dll</HintPath>
@@ -80,6 +83,9 @@
     </Reference>
     <Reference Include="Microsoft.Web.WebView2.Core, Version=1.0.818.41, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Web.WebView2.1.0.818.41\lib\net45\Microsoft.Web.WebView2.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Web.WebView2.DevToolsProtocolExtension, Version=1.0.824.0, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Web.WebView2.DevToolsProtocolExtension.1.0.824\lib\net462\Microsoft.Web.WebView2.DevToolsProtocolExtension.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Web.WebView2.WinForms, Version=1.0.818.41, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Web.WebView2.1.0.818.41\lib\net45\Microsoft.Web.WebView2.WinForms.dll</HintPath>

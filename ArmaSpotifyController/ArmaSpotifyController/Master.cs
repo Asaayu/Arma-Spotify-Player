@@ -17,9 +17,10 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Management;
 using System.Threading;
-using System.Security.Permissions;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.WinForms;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Core.DevToolsProtocolExtension;
 
 namespace ArmaSpotifyController
 {
@@ -31,9 +32,6 @@ namespace ArmaSpotifyController
         // Logging
         internal static string log_directory;
         internal static string log_file;
-
-        // Background player
-        internal static string js_data;
 
         // Debug variable
         internal static bool debug;
@@ -55,7 +53,6 @@ namespace ArmaSpotifyController
         // Token Lifetime
         internal static string client_refresh_token;
         internal static string client_access_token;
-        internal static string client_web_access_token;
         internal static DateTime client_refresh_time;
 
         // Legal
@@ -80,6 +77,10 @@ namespace ArmaSpotifyController
         // Security variables
         internal static string verifier_string;
         internal static int state;
+
+        // Background Player
+        internal static Thread player_thread;
+        internal static bool form_close_bypass;
 
         // Http Listener
         internal static HttpListener httpListener = new HttpListener();
@@ -490,25 +491,23 @@ namespace ArmaSpotifyController
 
                     // BACKGROUND_PLAYER: Create the background player for Spotify
                     case "background_player":
-                        Debug.Info("Getting background player html data...");                        
-                        try
-                        {
-                            Variable.js_data = (await Internal.DownloadString("http://asaayu.com/arma-3/spotify/index.html")).Replace("**TOKEN**", $"{Variable.client_access_token}");
-                        }
-                        catch (Exception e)
-                        {
-                            Debug.Info("An error has occured downloading background player html data...");
-                            Debug.Error(e.ToString());
-                        };
+                        WebClient.StartPlayer();
+                        break;
 
-                        Debug.Info("Starting background player program...");
-                        Thread t = new Thread(() =>
-                        {
-                            Thread.CurrentThread.IsBackground = true;
-                            WebClient.Setup();
-                        });
-                        t.SetApartmentState(ApartmentState.STA);
-                        t.Start();
+                    // BACKGROUND_PLAYER_RESTART: Create the background player for Spotify
+                    case "background_player_restart":
+                        Debug.Info("Restarting background player...");
+                        // Set the bypass variable
+                        Variable.form_close_bypass = true;
+
+                        // Close the old menu
+                        WebClient.web_client_window.Close();
+
+                        // Stop the old thread
+                        Variable.player_thread.Abort();
+
+                        // Restart the background player
+                        WebClient.StartPlayer();
                         break;
 
                     // LEGAL_UPDATE: Get the EULA & Privacy Policy last update time
@@ -582,13 +581,6 @@ namespace ArmaSpotifyController
             ServicePointManager.Expect100Continue = true;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls12 | SecurityProtocolType.Ssl3;
 
-            Debug.Info("Generating state key...");
-
-            RNGCryptoServiceProvider generator = new RNGCryptoServiceProvider();
-            byte[] data = new byte[4];
-            generator.GetBytes(data);
-            Variable.state = BitConverter.ToInt32(data, 0);
-
             Debug.Info("Connecting to GitHub...");
             Debug.Info("Downloading last legal update...");
             Variable.legal_update = DownloadString(Variable.legal_update_file).Result;
@@ -625,6 +617,23 @@ namespace ArmaSpotifyController
 
                 // Get new token through task in the background
                 await Request.RefeshData(true);
+            }
+
+            // Start HTTP listener if not already running
+            if (!Variable.httpListener.IsListening)
+            {
+                // Authentication Request
+                Variable.httpListener.Prefixes.Add("http://localhost:5000/");
+
+                // Token Request
+                Variable.httpListener.Prefixes.Add("http://localhost:5050/");
+
+                // Start the HTTP listener
+                Variable.httpListener.Start();
+                Thread responseThread = new Thread(AuthResponseThread);
+                responseThread.Start(); // Start the response thread
+
+                Debug.Info("HTTP Listener is now running and listening to requests...");
             }
         }
 
@@ -678,6 +687,14 @@ namespace ArmaSpotifyController
             // User wants to re-authenticate, delete the old token file
             Token(1);
 
+            // Generate new state key
+            Debug.Info("Generating new state key...");
+
+            RNGCryptoServiceProvider generator = new RNGCryptoServiceProvider();
+            byte[] data = new byte[4];
+            generator.GetBytes(data);
+            Variable.state = BitConverter.ToInt32(data, 0);
+
             // Create code verifier
             Variable.verifier_string = Security.RandomString(110);
 
@@ -718,13 +735,7 @@ namespace ArmaSpotifyController
             };
 
             // DO NOT ALLOW USER TO CUSTOMIZE THIS.
-            Process.Start(string.Format("https://accounts.spotify.com/authorize?{0}", string.Join("&", parameters_dict.Select(kvp => string.Format("{0}={1}", kvp.Key, kvp.Value)))));
-
-            // Start HTTP Listener
-            Variable.httpListener.Prefixes.Add("http://localhost:5000/");
-            Variable.httpListener.Start();
-            Thread responseThread = new Thread(AuthResponseThread);
-            responseThread.Start(); // start the response thread
+            Process.Start(string.Format("https://accounts.spotify.com/authorize?{0}", string.Join("&", parameters_dict.Select(kvp => string.Format("{0}={1}", kvp.Key, kvp.Value)))));            
         }
 
         internal static async void AuthResponseThread()
@@ -737,76 +748,103 @@ namespace ArmaSpotifyController
                     string user_code = HttpUtility.ParseQueryString(context.Request.Url.Query).Get("code");
                     string user_state = HttpUtility.ParseQueryString(context.Request.Url.Query).Get("state");
 
-                    // Make sure state is correct, else reject authorization
-                    if (user_state == Variable.state.ToString())
+                    Debug.Info("poppp");
+                    Debug.Info(context.Request.LocalEndPoint.Port.ToString());
+
+                    int port = context.Request.LocalEndPoint.Port;
+                    // This is an authentication request
+                    if (port == 5000)
                     {
-                        // POST URL
-                        String post_url = "https://accounts.spotify.com/api/token";
-                        // Setup POST data
-                        var values = new Dictionary<string, string>
+                        // Make sure state is correct, else reject authorization
+                        if (user_state == Variable.state.ToString())
                         {
-                            { "client_id", Variable.app_client_id },
-                            { "grant_type", "authorization_code" },
-                            { "redirect_uri", "http://localhost:5000/callback" },
-                            { "code", user_code },
-                            { "code_verifier", Variable.verifier_string }
-                        };
-                        var content = new FormUrlEncodedContent(values);
+                            // POST URL
+                            String post_url = "https://accounts.spotify.com/api/token";
+                            // Setup POST data
+                            var values = new Dictionary<string, string>
+                            {
+                                { "client_id", Variable.app_client_id },
+                                { "grant_type", "authorization_code" },
+                                { "redirect_uri", "http://localhost:5000/callback" },
+                                { "code", user_code },
+                                { "code_verifier", Variable.verifier_string }
+                            };
+                            var content = new FormUrlEncodedContent(values);
 
-                        // Send request + content in POST 
-                        var response = await Variable.client.PostAsync(post_url, content);
+                            // Send request + content in POST 
+                            var response = await Variable.client.PostAsync(post_url, content);
 
-                        if (response.IsSuccessStatusCode)
-                        {
-                            var serializer = new JavaScriptSerializer();
-                            Classes.AccessToken.Root result = serializer.Deserialize<Classes.AccessToken.Root>(await response.Content.ReadAsStringAsync());
+                            if (response.IsSuccessStatusCode)
+                            {
+                                var serializer = new JavaScriptSerializer();
+                                Classes.AccessToken.Root result = serializer.Deserialize<Classes.AccessToken.Root>(await response.Content.ReadAsStringAsync());
 
-                            Variable.client_access_token = result.access_token;
-                            Variable.client_refresh_token = result.refresh_token;
+                                Variable.client_access_token = result.access_token;
+                                Variable.client_refresh_token = result.refresh_token;
 
-                            // Refresh token
-                            Token(0);
+                                // Refresh token
+                                Token(0);
 
-                            // Set the refresh timer
-                            Variable.client_refresh_time = DateTime.Now.AddSeconds(3300);
+                                // Set the refresh timer
+                                Variable.client_refresh_time = DateTime.Now.AddSeconds(3300);
 
-                            // Callback to game to let it know user is authorised
-                            Master.callback.Invoke("ArmaSpotifyController", "setVariable", "[\"uinamespace\", \"aasp_authorised\", true]");
+                                // Callback to game to let it know user is authorised
+                                Master.callback.Invoke("ArmaSpotifyController", "setVariable", "[\"uinamespace\", \"aasp_authorised\", true]");
 
-                            // Save user info to client variables in DLL for later use
-                            await Request.GetUserInfo();
+                                // Save user info to client variables in DLL for later use
+                                await Request.GetUserInfo();
 
-                            Debug.Info("User authentication successful");
+                                Debug.Info("User authentication successful");
+                            }
+                            else
+                            {
+                                Debug.Info("Error: " + response.StatusCode.ToString());
+                                Debug.Info(response.ReasonPhrase);
+                                Debug.Info(await response.Content.ReadAsStringAsync());
+                            }
                         }
                         else
                         {
-                            Debug.Info("Error: " + response.StatusCode.ToString());
-                            Debug.Info(response.ReasonPhrase);
-                            Debug.Info(await response.Content.ReadAsStringAsync());
+                            // Missing state key
+                            Debug.Info("ERROR: Incorrect 'state' key. Reauthorization required!");
                         }
+
+                        context.Response.Redirect("http://asaayu.com/arma-3/spotify/auth.php");
+                        context.Response.Close();
+
+                        await Task.Delay(150);
+
+                        // Reload UI
+                        Master.callback.Invoke("ArmaSpotifyController", "reload_display", "");
                     }
-                    else
+                    // This is a web playback api token request
+                    else if (port == 5050)
                     {
-                        // Missing state key
-                        Debug.Info("ERROR: Incorrect 'state' key. Reauthorization required!");
-                    }
+                        // Make sure this request has come from our local connection
+                        Debug.Info($"Local connection request: {context.Request.IsLocal}");
+                        if (context.Request.IsLocal)
+                        {
+                            // This is from the local computer
+                            context.Response.StatusCode = (int)HttpStatusCode.OK;
 
-                    context.Response.Redirect("http://asaayu.com/arma-3/spotify/auth.php");
+                            // Set the correct header
+                            context.Response.Headers.Add("Access-Control-Allow-Origin", "https://asaayu.com");
 
-                    await Task.Delay(150);
-
-                    // Reload UI
-                    Master.callback.Invoke("ArmaSpotifyController", "reload_display", "");
-
-                    context.Response.KeepAlive = false;
-                    context.Response.Close();
-                    Variable.httpListener.Stop();
-                    break;
+                            byte[] data_array = Encoding.UTF8.GetBytes(Variable.client_access_token);
+                            context.Response.OutputStream.Write(data_array, 0, data_array.Length);
+                        }
+                        else
+                        {
+                            context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+                        };
+                        context.Response.Close();
+                    };
                 }
             }
             catch (Exception e)
             {
-                Debug.Info(e.ToString());
+                Debug.Info("Http Listener encountered an error..");
+                Debug.Error(e.ToString());
             }
         }
     };
@@ -815,55 +853,108 @@ namespace ArmaSpotifyController
     {
         internal static Form web_client_window;
         internal static WebView2 web;
-        internal static bool page_loaded;
 
-        public static void Setup()
+        internal static void StartPlayer()
+        {
+            Debug.Info("Starting background player program...");
+            Variable.player_thread = new Thread(() =>
+            {
+                try
+                {
+                    Thread.CurrentThread.IsBackground = true;
+                    WebClient.Setup();
+                }
+                // Don't worry about thread abort exceptions
+                catch (ThreadAbortException) { }
+                // Normal exceptions we do
+                catch (Exception e)
+                {
+                    Debug.Info("Background player thread encountered an error...");
+                    Debug.Error(e.ToString());
+                }
+            });
+
+            // Reset the bypass variable
+            Variable.form_close_bypass = false;
+
+            Variable.player_thread.SetApartmentState(ApartmentState.STA);
+            Variable.player_thread.Start();
+        }
+
+        internal static void Setup()
         {
             try
             {
                 web_client_window = new Form
                 {
-                    //ShowIcon = false,
-                    //ShowInTaskbar = false,
-                    //WindowState = FormWindowState.Minimized,
-                    //CancelButton = null,
-                    //AcceptButton = null,
-                    //Capture = false,
-                    //IsAccessible = false,
-                    Text = "AASP Master Sync"
+                    ShowIcon = false,
+                    ShowInTaskbar = false,
+                    WindowState = FormWindowState.Minimized,
+                    CancelButton = null,
+                    AcceptButton = null,
+                    Capture = false,
+                    IsAccessible = false,
+                    AllowDrop = false,
+                    Enabled = false,
+                    Visible = false,
+                    Text = "Arma Spotify Player"
                 };
+
                 web = new WebView2
                 {
                     Dock = DockStyle.Fill,
-                    Source = new Uri("https://bing.com/")
+                    Source = new Uri("https://asaayu.com/arma-3/spotify/index.php")
                 };
 
+                web.CoreWebView2InitializationCompleted += new EventHandler<CoreWebView2InitializationCompletedEventArgs>(onInitializationCompleted);
+                web.SourceChanged += new EventHandler<CoreWebView2SourceChangedEventArgs>(onSourceChanged);
                 web_client_window.FormClosing += new FormClosingEventHandler(onClosing);
                 web_client_window.FormClosed += new FormClosedEventHandler(onClose);
-                web.SourceChanged += new EventHandler<Microsoft.Web.WebView2.Core.CoreWebView2SourceChangedEventArgs>(onSourceChanged);
-                web.ContentLoading += new EventHandler<Microsoft.Web.WebView2.Core.CoreWebView2ContentLoadingEventArgs>(onContentLoading);
+
+                web_client_window.FormBorderStyle = FormBorderStyle.SizableToolWindow;
+                web_client_window.SendToBack();
+                //web_client_window.TopLevel = false;
 
                 web_client_window.Controls.Add(web);
-                web_client_window.ShowDialog();
+                Application.Run(web_client_window);
 
-                Debug.Info("Master sync connected to local html file and ready to sync...");
+                Debug.Info("Background player connected to local html file and ready to play...");
             }
+            catch (ThreadAbortException e) { }
             catch (Exception e)
             {
-                Debug.Info("An error has occured while loading background web client");
+                Debug.Info("An error has occured while starting background player...");
                 Debug.Error(e.ToString());
             }
         }
 
-        private static void onClose(object sender, FormClosedEventArgs e)
+        private static async void onInitializationCompleted(object sender, CoreWebView2InitializationCompletedEventArgs e)
         {
-            web.Dispose();
+            DevToolsProtocolHelper helper = web.CoreWebView2.GetDevToolsProtocolHelper();
+            helper.Console.MessageAdded += ConsoleMessage;
+
+            await helper.Console.EnableAsync();
+        }
+
+        private static void ConsoleMessage(object sender, Microsoft.Web.WebView2.Core.DevToolsProtocolExtension.Console.MessageAddedEventArgs e)
+        {
+            if (e != null)
+            {
+                Debug.Player(e.Message.Line.Value.ToString(), e.Message.Text);
+            }
+        }
+
+        private static void onSourceChanged(object sender, CoreWebView2SourceChangedEventArgs e)
+        {
+            // Load the correct file
+            Debug.Info("Redirecting to correct url...");
+            web.Source = new Uri("https://asaayu.com/arma-3/spotify/index.php");
         }
 
         private static void onClosing(object sender, FormClosingEventArgs e)
         {
             // Don't block non user actions
-            if (e.CloseReason != CloseReason.UserClosing)
+            if (e.CloseReason != CloseReason.UserClosing || Variable.form_close_bypass)
                 return;
 
             Debug.Info("User has attempted to close the master sync window...");
@@ -874,22 +965,9 @@ namespace ArmaSpotifyController
             e.Cancel = true;
         }
 
-        private static void onSourceChanged(object sender, Microsoft.Web.WebView2.Core.CoreWebView2SourceChangedEventArgs e)
+        private static void onClose(object sender, FormClosedEventArgs e)
         {
-            // Reconnect to the correct data
-            Debug.Info($"Redirecting to background player file");
-            web.NavigateToString(Variable.js_data);
-        }
-        
-        private static void onContentLoading(object sender, Microsoft.Web.WebView2.Core.CoreWebView2ContentLoadingEventArgs e)
-        {
-            if (!page_loaded)
-            {
-                Debug.Info($"Redirecting to background player file");
-                web.NavigateToString(Variable.js_data);
-                Debug.Info(Variable.js_data);
-                page_loaded = true;
-            }
+            web.Dispose();
         }
     };
 
@@ -1047,7 +1125,7 @@ namespace ArmaSpotifyController
                 String text = DateTime.Now.ToString("[dd/MM/yyyy hh:mm:ss tt]") + "[" + prefix + "] " + message;
 
                 if (Variable.debug)
-                    Console.WriteLine(text);
+                    System.Console.WriteLine(text);
 
                 using (StreamWriter sw = File.AppendText(Variable.log_file))
                 {
@@ -1059,6 +1137,11 @@ namespace ArmaSpotifyController
             {
                 return false;
             }
+        }
+
+        internal static bool Player(string line, string message)
+        {
+            return Info($"<{line}> {message}", "PLAYER");
         }
 
         internal static bool Error(string message)
