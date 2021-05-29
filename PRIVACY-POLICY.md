@@ -1,21 +1,21 @@
-# What we collect
-We collect personal information about you from Spotify, including information about your:
+# What we use
+We use personal information about you from Spotify, including information about your:
  * Spotify Subscription
  * Country of residence
  * Connected Spotify devices
  * Spotify Explicit content settings
 
-And we collect personal information from you, including information about your:
+And we use personal information from you, including information about your:
  * Interactions with the software
 
-# Why we collect
-We collect your personal information in order to:
+# Why we use this information
+We use your personal information in order to:
 * **Spotify Subscription**
   * Identify if your Spotify account has an active Spotify Premium subscription
 * **Country of residence**
   * Relink tracks that are not avaliable in your region
 * **Connected Spotify devices**
-  * Show the user a list of devices currently avaliable to be connected to through Spotify Connect
+  * Show you a list of devices currently avaliable through Spotify Connect
   * Send a request to the Spotify Web API to connect your Spotify account to a device
 * **Spotify Explicit content settings**
   * Determine if explicit content should be shown to the user
@@ -23,10 +23,10 @@ We collect your personal information in order to:
   * Log your interactions with the software locally on your computer for debugging purposes in order to reproduce encountered errors in a development enviroment
   
 # Options
-Allowing this service to collect personal information about you from Spotify is optional. If you choose to decline or revoke this softwares access to your Spotify data, we'll be unable to provide services related to connecting to the Spotify Web API or syncing between this software and your Spotify Player.
+Allowing this service to use personal information about you from Spotify is optional. If you choose to decline or revoke this softwares access to your Spotify data, we'll be unable to provide services related to connecting to the Spotify Web API or syncing between this software and your Spotify account.
 
 # Keeping your personal data safe
-We keep your information safe by only storing personally identifiable information on your local device and do not transmit any identifiable information to services outside of the Spotify Web API service.
+We keep your information safe by only storing personally identifiable information on your local device and do not transmit any identifiable information to services outside of the Spotify Web API service. We also block any requests from outside your local area network that may allow access to any personal information. 
 
 # Data retention and deletion
 We keep your information for the length of time the Arma 3 application is open at which point it is destroyed when the Arma 3 application is closed.
